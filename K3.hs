@@ -89,6 +89,23 @@ cupAd = memo2 ad where
 	ad (i,j) k = sum [bilK3inv_func i ii * bilK3inv_func j jj 
 		* cup kk (ii,jj) * bilK3_func kk k |(kk,(ii,jj)) <- cupNonZeros ]
 
+-- Indizes, an denen das adjungierte Cup Produkt nicht null ist
+cupAdNonZeros = [ ((i,j),k) | i<-[0..23],j<-[0..23], k<-[0..23], cupAd (i,j) k /= 0]
+
+-- Adjungiertes Cup Produkt mit beliebig vielen Faktoren
+cupAdL [] k = delta 23 k
+cupAdL [i] k= delta i k
+cupAdL [i,j] k = cupAd (i,j) k
+cupAdL (i:r) k = sum [cupAd (i,j) k * cupAdL r j | j<-[0..23]]
+
+-- Indexlisten, wo das adjungierte Cupprodukt nicht (garantiert) null ist
+cupAdLNonZeros :: (Integral i, HasTrie i) => i -> [([Int],Int)]
+cupAdLNonZeros = f where
+	f = memo nz
+	nz 0 = [([],23)]
+	nz n = [(i:r,k) | ((i,j),k) <- cupAdNonZeros, (r,kk) <- f (n-1) , kk==j]
+
+-- Eulerklasse
 euler = array (0,23) [(i, cf i ) | i<-[0..23]] where
 	cf l = sum [cup l (i,j) * cupAd (i,j) 0 | (k,(i,j)) <- cupNonZeros, k==l] 
 
