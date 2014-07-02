@@ -3,6 +3,7 @@ module K3
 
 import Data.Array
 import Data.List
+import Data.MemoTrie
 
 delta :: (Num a) => Int -> Int -> a
 delta i j = if i==j then 1 else 0
@@ -61,15 +62,33 @@ bilK3inv_func ii jj = let
 	if (i >= 15) && (j<= 22) then inve8 ! ((i-14), (j-14))  else
 	0
 
+-- Cup Produkt mit zwei Faktoren
 cup k (ii,jj) = r (min ii jj) (max ii jj) where
 	r 0 i = delta k i
 	r i 23 = 0
 	r i j = if k==23 then bilK3_func i j else 0
 
+-- Indizes, an denen das Cup Produkt nicht null ist
 cupNonZeros = [ (k,(i,j)) | i<-[0..23],j<-[0..23], k<-[0..23], cup k (i,j) /= 0]
 
-cupAd (i,j) k = sum [bilK3inv_func i ii * bilK3inv_func j jj * cup kk (ii,jj) * bilK3_func kk k |
-	(kk,(ii,jj)) <- cupNonZeros ]
+-- Cup Produkt mit beliebig vielen Faktoren
+cupL k [] = delta 0 k
+cupL k [i] = delta i k
+cupL k [i,j] = cup k (i,j)
+cupL k (i:r) = sum [cup k (i,j) * cupL j r | j <-[0..23] ]
+
+-- Indexlisten, wo das Cupprodukt nicht null ist
+cupLNonZeros :: (Integral i, HasTrie i) => i -> [(Int,[Int])]
+cupLNonZeros = memo nz where
+	nz 0 = [(0,[])]
+	nz 1 = [(k,[k]) | k<-[0..23]]
+	nz 2 = [(k,[i,j]) | (k,(i,j)) <- cupNonZeros]
+	nz n = [(k,i:r) | (k,(i,j)) <- cupNonZeros, (kk,r) <- cupLNonZeros (n-1) , kk==j]
+
+-- Adjungiertes zum Cup Produkt
+cupAd = memo2 ad where 
+	ad (i,j) k = sum [bilK3inv_func i ii * bilK3inv_func j jj 
+		* cup kk (ii,jj) * bilK3_func kk k |(kk,(ii,jj)) <- cupNonZeros ]
 
 euler = array (0,23) [(i, cf i ) | i<-[0..23]] where
 	cf l = sum [cup l (i,j) * cupAd (i,j) 0 | (k,(i,j)) <- cupNonZeros, k==l] 
