@@ -1,0 +1,21 @@
+-- TypeFamilies, MultiParamTypeClasses,
+	FunctionalDependencies, FlexibleInstances, UndecidableInstances
+
+class Num' flag a where
+	plus' :: flag -> RationalFunction a -> RationalFunction a -> RationalFunction a
+	mult' :: flag -> RationalFunction a -> RationalFunction a -> RationalFunction a
+class ShowPred a flag | a->flag where {}
+data HFalse
+data HTrue
+instance (flag ~ HFalse) => ShowPred a flag
+instance Integral a => ShowPred a HTrue
+
+instance (Integral a) => Num' HTrue a where
+	mult' _ (Rat p q)(Rat pp qq) = ratReduceInt $ Rat (p*pp) (q*qq)
+	plus' _ (Rat p q)(Rat pp qq) = ratReduceInt $ Rat (p*qq+q*pp) (pp*qq)
+instance (Num a) => Num' HFalse a where
+	mult' _ (Rat p q)(Rat pp qq) = Rat (p*pp) (q*qq)
+	plus' _ (Rat p q)(Rat pp qq) = Rat (p*qq+q*pp) (pp*qq)
+
+instance (ShowPred a flag, Num' flag a) => Num (RationalFunction a) where
+	(*) = mult' (undefined::flag)
