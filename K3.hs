@@ -77,13 +77,12 @@ cupL k [i] = delta i k
 cupL k [i,j] = cup k (i,j)
 cupL k (i:r) = sum [cup k (i,j) * cupL j r | j <-[0..23] ]
 
--- Indexlisten, wo das Cupprodukt nicht null ist
+-- Indexlisten, wo das Cupprodukt nicht (garantiert) null ist
 cupLNonZeros :: (Integral i, HasTrie i) => i -> [(Int,[Int])]
-cupLNonZeros = memo nz where
+cupLNonZeros = f where
+	f = memo nz
 	nz 0 = [(0,[])]
-	nz 1 = [(k,[k]) | k<-[0..23]]
-	nz 2 = [(k,[i,j]) | (k,(i,j)) <- cupNonZeros]
-	nz n = [(k,i:r) | (k,(i,j)) <- cupNonZeros, (kk,r) <- cupLNonZeros (n-1) , kk==j]
+	nz n = [(k,i:r) | (k,(i,j)) <- cupNonZeros, (kk,r) <- f (n-1) , kk==j]
 
 -- Adjungiertes zum Cup Produkt
 cupAd = memo2 ad where 
