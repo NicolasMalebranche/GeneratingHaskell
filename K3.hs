@@ -75,7 +75,8 @@ cupNonZeros = [ (k,(i,j)) | i<-[0..23],j<-[0..23], k<-[0..23], cup k (i,j) /= 0]
 cupL k [] = delta 0 k
 cupL k [i] = delta i k
 cupL k [i,j] = cup k (i,j)
-cupL k (i:r) = sum [cup k (i,j) * cupL j r | j <-[0..23] ]
+cupL k (i:r) = sum [cup k (i,j) * cupL j r | 
+	(j,rr)<-cupLNonZeros (length r), rr == r]
 
 -- Indexlisten, wo das Cupprodukt nicht (garantiert) null ist
 cupLNonZeros :: (Integral i, HasTrie i) => i -> [(Int,[Int])]
@@ -96,7 +97,8 @@ cupAdNonZeros = [ ((i,j),k) | i<-[0..23],j<-[0..23], k<-[0..23], cupAd (i,j) k /
 cupAdL [] k = delta 23 k
 cupAdL [i] k= delta i k
 cupAdL [i,j] k = cupAd (i,j) k
-cupAdL (i:r) k = sum [cupAd (i,j) k * cupAdL r j | j<-[0..23]]
+cupAdL (i:r) k = sum [cupAd (i,j) k * cupAdL r j | 
+	(rr,j)<-cupAdLNonZeros (length r), rr == r]
 
 -- Indexlisten, wo das adjungierte Cupprodukt nicht (garantiert) null ist
 cupAdLNonZeros :: (Integral i, HasTrie i) => i -> [([Int],Int)]
