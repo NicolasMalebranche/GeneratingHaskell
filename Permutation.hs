@@ -3,11 +3,13 @@ module Permutation where
 import Data.Permute
 import Partitions
 import Data.List
+import qualified Data.Set as Set
 
 compose s t = swapsPermute (max (size s) (size t)) (swaps s ++ swaps t)
 
 -- Bestimmt die Orbits der von pi und tau erzeugten Gruppe
-commonOrbits pi tau = foldr (uni [][]) (cycles pi) (cycles tau) where
+commonOrbits pi tau = Data.List.sortBy (\a b -> compare (length b)(length a)) orl where
+	orl = foldr (uni [][]) (cycles pi) (cycles tau) 
 	uni i ni c []  = i:ni
 	uni i ni c (k:o) = if Data.List.intersect c k == [] 
 		then uni i (k:ni) c o else uni (i++k) ni c o
@@ -23,7 +25,7 @@ uniCyc pi tau = foldr (f ([],[])[])  [([],[d]) | d <- cycles pi] (cycles tau) wh
 -- Sortierte Zykel, absteigend der Länge nach
 sortCycles pi = Data.List.sortBy f $ cycles pi where f a b = compare (length b) (length a)
 
--- 
+orbits pi = Set.fromList $ map Set.fromList $ cycles pi
 
 refp = listPermute 5 [1,0,3,4,2]
-refq = listPermute 5 [4,1,2,0,3]
+refq = listPermute 5 [0,1,2,4,3]
