@@ -25,7 +25,26 @@ uniCyc pi tau = foldr (f ([],[])[])  [([],[d]) | d <- cycles pi] (cycles tau) wh
 -- Sortierte Zykel, absteigend der Länge nach
 sortCycles pi = Data.List.sortBy f $ cycles pi where f a b = compare (length b) (length a)
 
+-- Das Ganze mit Mengen
 orbits pi = Set.fromList $ map Set.fromList $ cycles pi
+
+-- Bestimmt Verklebedaten [([Orbits von pi], Orbit von pi,tau)]
+glueOrbits pi tau = foldr (f ([],Set.empty)[]) init (map Set.fromList $ cycles pi) where
+	init = [([],Set.fromList d) | d <- cycles tau] 
+	f (ci,di) ni c [] = (c:ci,di) : ni
+	f (ci,di) ni c ((ck, dk):r) = 
+		if Set.null $ Set.intersection c dk
+		then f (ci,di) ((ck,dk):ni) c r 
+		else f (ci++ck, Set.union di dk) ni c r
+
+-- Bestimmt Verklebedaten [([Orbits von pi], [Orbits von tau], Orbit von pi,tau)]
+glueOrbits2 pi tau = foldr (f ([],[],Set.empty)[]) init (map Set.fromList $ cycles pi) where
+	init = [([],[Set.fromList d],Set.fromList d) | d <- cycles tau] 
+	f (ci,fi,di) ni c [] = (c:ci,fi,di) : ni
+	f (ci,fi,di) ni c ((ck, fk, dk):r) = 
+		if Set.null $ Set.intersection c dk
+		then f (ci,fi,di) ((ck,fk, dk):ni) c r 
+		else f (ci++ck, fi++fk, Set.union di dk) ni c r
 
 refp = listPermute 5 [1,0,3,4,2]
 refq = listPermute 5 [0,1,2,4,3]
