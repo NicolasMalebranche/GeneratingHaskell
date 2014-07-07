@@ -54,5 +54,12 @@ defect pi tau b = div def 2 where
 	tauor = myfilt $ orbits tau
 	pitauor = myfilt $ orbits $ compose pi tau
 
+graphDefect or1 or2 or3 b = div def 2 where
+	def = Set.size b + 2 - Set.size bor1 - Set.size bor2 - Set.size bor3
+	myfilt = Set.filter $ not. Set.null . Set.intersection b
+	bor1 = myfilt or1
+	bor2 = myfilt or2
+	bor3 = myfilt or3
+
 refp = listPermute 5 [1,0,3,4,2]
 refq = listPermute 5 [0,1,2,4,3]
