@@ -46,5 +46,13 @@ glueOrbits2 pi tau = foldr (f ([],[],Set.empty)[]) init (map Set.fromList $ cycl
 		then f (ci,fi,di) ((ck,fk, dk):ni) c r 
 		else f (ci++ck, fi++fk, Set.union di dk) ni c r
 
+-- Graph Defekt. b muß ein gemeinsamer Orbit von pi, tau sein
+defect pi tau b = div def 2 where
+	def = Set.size b + 2 - Set.size pior - Set.size tauor - Set.size pitauor
+	myfilt = Set.filter $ not. Set.null . Set.intersection b
+	pior = myfilt $orbits pi
+	tauor = myfilt $ orbits tau
+	pitauor = myfilt $ orbits $ compose pi tau
+
 refp = listPermute 5 [1,0,3,4,2]
 refq = listPermute 5 [0,1,2,4,3]
