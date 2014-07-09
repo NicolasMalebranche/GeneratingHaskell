@@ -78,7 +78,7 @@ instance Partition PartitionAlpha where
 	partFromLambda = lambdaToAlpha
 	partAllPerms = partAllPerms . partAsLambda
 
--- Alle Partitionen eines bestimmten Gewichts
+-- Alle Partitionen eines bestimmten Gewichts, aufsteigend sortiert
 partOfWeight :: Int -> [PartitionAlpha]
 partOfWeight = let
 	build n 1 acc = [alphaPrepend n acc]
@@ -86,7 +86,7 @@ partOfWeight = let
 	a w =  if w<0 then [] else  build w w partEmpty
 	in memo a
 
--- Alle Partitionen eines bestimmten Gewicht und einer bestimmten Länge
+-- Alle Partitionen eines bestimmten Gewicht und einer bestimmten Länge, aufsteigend sortiert
 partOfWeightLength = let
 	build 0 0 _ = [partEmpty]
 	build w 0 _ = []
@@ -129,6 +129,9 @@ instance Eq PartitionAlpha where
 		findEq [] q = isZero q
 		findEq p [] = isZero p 
 		isZero = all (==0) 
+
+instance Ord PartitionAlpha where
+	compare a1 a2 = compare (partAsLambda a1) (partAsLambda a2)
 
 instance Show PartitionAlpha where 
 	show p = let
@@ -183,10 +186,9 @@ instance (Eq i, Num i) => Eq (PartitionLambda i) where
 		isZero = all (==0) 
 
 instance (Ord i, Num i) => Ord (PartitionLambda i) where
-	PartLambda p > PartLambda q = gr p q where
-		gr [] _ = False
-		gr (a:p) (b:q) = if a>b then True else gr p q
-		gr (a:p) [] = if (a==0) && all (==0) p then False else True 
+	compare p1 p2 = if weighteq == EQ then compare l1 l2 else weighteq where
+		(PartLambda l1, PartLambda l2) = (p1, p2)
+		weighteq = compare (sum l1) (sum l2)
 
 instance (Show i) => Show (PartitionLambda i) where
 	show (PartLambda p) = "[" ++ s ++ "]" where
