@@ -5,7 +5,7 @@ module SymmetricFunctions where
 import Data.List 
 import Data.MemoTrie
 import Partitions
-import Data.Ratio
+import LinearAlgebra
 import MatrixAlgorithms
 
 choose n k = ch1 n k where
@@ -61,7 +61,8 @@ memoizedKostka = memo2 b where
 	fillLine n val (i:m) (j:rest) = [(i:newm,newrest) |(newm, newrest) <- fillLine n (val+1) m (j:rest)] ++ 
 		if i>0 && val > j then [(newm,val:newrest) |(newm, newrest) <- fillLine (n-1) val ((i-1):m) rest] else []
 
--- Inverse der Matrix aus Kostkazahlen
+-- Inverse der Matrix aus Kostkazahlen, 
+-- untere Dreiecksmatrix mit Einsern auf der Diagonale
 -- monomial = kostkaInv * schur
 -- schur = complete * kostkaInv
 kostkaInv :: (Partition a, Partition b, Num i) => a->b->i 
@@ -71,3 +72,22 @@ memoizedKostkaInv = memo2 ko1 where
 	ko1 l m  = if partWeight l == partWeight m then ko2 (partWeight m) l m else 0 
 	ko2 w l m = invertLowerDiag (map partAsLambda $ partOfWeight w) memoizedKostka l m
 
+-- completeMonomial, symmetrische unimodulare Matrix
+-- complete = completeMonomial * monomial
+-- completeMonomial = flip kostka * kostka
+completeMonomial :: (Partition a, Partition b, Num i) => a->b->i 
+completeMonomial lambda mu = fromIntegral $ memoizedKostkaTKostka (partAsLambda lambda) (partAsLambda mu)  
+memoizedKostkaTKostka :: PartitionLambda Int -> PartitionLambda Int -> Int
+memoizedKostkaTKostka = memo2 ko1 where
+	ko1 l m  = if partWeight l == partWeight m then ko2 (partWeight m) l m else 0 
+	ko2 w = mM (map partAsLambda $ partOfWeight w) (flip memoizedKostka) memoizedKostka 
+
+-- monomialComplete, symmetrische unimodulare Matrix
+-- monomial = monomialComplete * complete
+-- monomialComplete = kostkaInv * flip kostkaInv
+monomialComplete :: (Partition a, Partition b, Num i) => a->b->i 
+monomialComplete lambda mu = fromIntegral $ memoizedKostkaTKostkaInv (partAsLambda lambda) (partAsLambda mu)  
+memoizedKostkaTKostkaInv :: PartitionLambda Int -> PartitionLambda Int -> Int
+memoizedKostkaTKostkaInv = memo2 ko1 where
+	ko1 l m  = if partWeight l == partWeight m then ko2 (partWeight m) l m else 0 
+	ko2 w = mM (map partAsLambda $ partOfWeight w) memoizedKostkaInv (flip memoizedKostkaInv)
