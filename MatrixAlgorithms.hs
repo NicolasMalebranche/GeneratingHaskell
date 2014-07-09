@@ -23,3 +23,17 @@ berkowitz vs m = let
 	n = length vs
 	pn = p n
 	in [pn i 0 | i <-[0..n]]
+
+-- Invertiert untere Dreiecksmatrix, deren Diagonaleinträge gleich 1 sind
+invertLowerDiag vs a = ild where
+	ild = memo2 inv
+	inv i k | i<k = 0
+		| i==k = 1
+		| otherwise = - sum [a i j * ild j k | j<-vs, i>j]
+
+-- Invertiert obere Dreiecksmatrix, deren Diagonaleinträge gleich 1 sind
+invertUpperDiag vs a = iud where
+	iud = memo2 inv
+	inv i k | i>k = 0
+		| i==k = 1
+		| otherwise = - sum [iud i j * a j k | j<-vs, j<k]
