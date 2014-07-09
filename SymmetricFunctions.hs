@@ -6,6 +6,7 @@ import Data.List
 import Data.MemoTrie
 import Partitions
 import Data.Ratio
+import MatrixAlgorithms
 
 choose n k = ch1 n k where
 	ch1 = memo2 ch
@@ -45,10 +46,14 @@ monomialScalarPower moI poI = (s * partZ poI) `div` quo where
 	s = sum[a* moebius b | (a,b)<-finerPart mI (partAsLambda poI)]
 	quo = product[factorial i| let PartAlpha l =mI, i<-l] 
 
--- Kostka Zahlen
-kostka lambda mu = build l (m,[0,0..]) where
-	(PartLambda l) = partAsLambda lambda
-	(PartLambda m) = partAsLambda mu
+-- Kostka Zahlen, untere Dreiecksmatrix mit Einsern auf der Diagonale
+-- schur = kostka * monomial
+-- complete = schur * kostka
+kostka :: (Partition a, Partition b, Num i) => a->b->i 
+kostka lambda mu = fromIntegral $ memoizedKostka (partAsLambda lambda) (partAsLambda mu)  
+memoizedKostka :: PartitionLambda Int -> PartitionLambda Int -> Int
+memoizedKostka = memo2 b where
+	b (PartLambda l) (PartLambda m) = build l (m,[0,0..])
 	build [] (m,_) = if all (==0) m then 1 else 0
 	build (r:l) (m,rest) = sum $ map (build l) $ fillLine r 1 m rest 
 	fillLine 0 val m _ = [(m,[])] 
@@ -56,5 +61,13 @@ kostka lambda mu = build l (m,[0,0..]) where
 	fillLine n val (i:m) (j:rest) = [(i:newm,newrest) |(newm, newrest) <- fillLine n (val+1) m (j:rest)] ++ 
 		if i>0 && val > j then [(newm,val:newrest) |(newm, newrest) <- fillLine (n-1) val ((i-1):m) rest] else []
 
-pa = PartAlpha [3,3,1]
-pl = PartLambda [4,3,2,1,1,1::Int]
+-- Inverse der Matrix aus Kostkazahlen
+-- monomial = kostkaInv * schur
+-- schur = complete * kostkaInv
+kostkaInv :: (Partition a, Partition b, Num i) => a->b->i 
+kostkaInv lambda mu = fromIntegral $ memoizedKostkaInv (partAsLambda lambda) (partAsLambda mu)  
+memoizedKostkaInv :: PartitionLambda Int -> PartitionLambda Int -> Int
+memoizedKostkaInv = memo2 ko1 where
+	ko1 l m  = if partWeight l == partWeight m then ko2 (partWeight m) l m else 0 
+	ko2 w l m = invertLowerDiag (map partAsLambda $ partOfWeight w) memoizedKostka l m
+
