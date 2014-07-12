@@ -24,15 +24,21 @@ berkowitz vs m = let
 	pn = p n
 	in [pn i 0 | i <-[0..n]]
 
--- Invertiert untere Dreiecksmatrix, deren Diagonaleinträge gleich 1 sind
+-- Invertiert untere Dreiecksmatrix
 invertLowerDiag vs a = ild where
+	ild = memo2 inv
+	inv i j | i<j = 0
+		| otherwise = (delta i j - sum [a i k * ild k j | k<-vs, i>k , k>= j]) / a i i
+
+-- Invertiert untere Dreiecksmatrix, deren Diagonaleinträge gleich 1 sind
+invertLowerDiag1 vs a = ild where
 	ild = memo2 inv
 	inv i k | i<k = 0
 		| i==k = 1
 		| otherwise = - sum [a i j * ild j k | j<-vs, i>j]
 
 -- Invertiert obere Dreiecksmatrix, deren Diagonaleinträge gleich 1 sind
-invertUpperDiag vs a = iud where
+invertUpperDiag1 vs a = iud where
 	iud = memo2 inv
 	inv i k | i>k = 0
 		| i==k = 1
