@@ -3,6 +3,7 @@
 module Partitions where
 
 import Data.Permute
+import Data.Maybe
 import qualified Data.List 
 import Data.MemoTrie
 
@@ -27,7 +28,10 @@ class (Eq a, HasTrie a) => Partition a where
 		make l (m:r) = l : make (l-m) r
 		make _ [] = []
 		res (PartAlpha r) = partFromLambda $ PartLambda $ make (sum r) r
-
+	
+	-- Nächste Partition
+	partSucc :: a -> a
+	
 	-- Leere Partition
 	partEmpty :: a
 	-- Transformation nach Alpha-Schreibweise
@@ -77,6 +81,18 @@ instance Partition PartitionAlpha where
 		f i (m:r) = i : f i ((m-1):r)
 	partFromLambda = lambdaToAlpha
 	partAllPerms = partAllPerms . partAsLambda
+	partSucc (PartAlpha a) = PartAlpha $ find 0 1 a where
+		find v i [] = [v+1]
+		find v i (0:r) = find v (i+1) r
+		find 0 i (1:r) = find i (i+1) r
+		find 0 1 (k:r) = k-2 : augment r
+		find 0 i (k:r) = construct 1 [(i-1,1),(i,k-2)] ++ augment r
+		find 1 i (k:r) = construct 1 [(i,k-1)] ++ augment r
+		find v i (k:r) = construct 1 [(v-1,1),(i,k-1)] ++ augment r
+		augment [] = [1]
+		augment (a:r) = a+1:r
+		construct _ [] = []
+		construct i l@((j,v):r)= if i==j then v:construct(i+1)r else 0:construct (i+1) l
 
 -- Alle Partitionen eines bestimmten Gewichts, aufsteigend sortiert
 partOfWeight :: Int -> [PartitionAlpha]
@@ -176,6 +192,14 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 		it (Just p) = if Data.List.sort (map length $ cycles p) == r then p : it (next p) else it (next p)
 		it Nothing = []
 		r = map fromIntegral $ reverse l
+	partSucc (PartLambda l) = PartLambda $ mysuc l where
+		mysuc [] = [1]
+		mysuc [a] = replicate (fromIntegral (a+1)) 1
+		mysuc r = fromJust $ my r where
+			my [a] = Nothing
+			my (a:b:r) = combine $ my $ b:r where
+				combine Nothing = if b==1 then Just $ a+1:r else Just $ a+1:b-1:r
+				combine (Just (c:r)) = if c>a then Just $ c:a:r else Just $a:c:r
 
 instance (Eq i, Num i) => Eq (PartitionLambda i) where
 	PartLambda p == PartLambda q = findEq p q where
