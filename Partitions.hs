@@ -99,6 +99,7 @@ partOfWeight :: Int -> [PartitionAlpha]
 partOfWeight = let
 	build n 1 acc = [alphaPrepend n acc]
 	build n c acc = concat [ build (n-i*c) (c-1) (alphaPrepend i acc) | i<-[0..div n c]] 
+	a 0 = [PartAlpha []]
 	a w =  if w<0 then [] else  build w w partEmpty
 	in memo a
 
