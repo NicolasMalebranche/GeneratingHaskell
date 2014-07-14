@@ -4,11 +4,10 @@ module K3
 import Data.Array
 import Data.List
 import Data.MemoTrie
+import LinearAlgebra
 
 type K3Domain = Int
 
-delta :: (Num a) => Int -> Int -> a
-delta i j = if i==j then 1 else 0
 
 e8 = array ((1,1),(8,8)) $
 	zip [(i,j) | i <- [1..8],j <-[1..8]] [
