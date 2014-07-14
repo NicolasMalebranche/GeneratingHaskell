@@ -13,7 +13,9 @@ import Partitions
 import Data.Permute
 import Data.List
 import qualified Data.Set as Set
+import SymmetricFunctions
 
+-- Cup Produkt für Produkte von Erzeugungsoperatoren
 cupHilb (pc,lc) (pa,la) (pb,lb) = if isZero then 0 else res where
 	(wa,wb,wc) =(partWeight pa,partWeight pb,partWeight pc)
 	isZero = wa/=wb || wb/= wc
@@ -45,11 +47,27 @@ cupSym cList commonOrbits aList bList = product [ sum (x o) | o <- commonOrbits 
 		cupList = xa ++ xb ++ replicate defekt 23
 		defekt = div (Set.size o + 2 - length xa - length xb - length xc) 2
 
-mya = [(Set.fromList[1,2],0),(Set.fromList[3],0)]:: [(Set.Set Int, Int)] 
-myb = [(Set.fromList[2,3],0),(Set.fromList[1],0)]:: [(Set.Set Int, Int)] 
-myc = [(Set.fromList[1,2,3],0)]:: [(Set.Set Int, Int)] 
-cmn = [Set.fromList[1,2,3]]:: [Set.Set Int] 
+-- Ganzzahlige Basis nach Qin / Wang
+-- integerBase = integerCreation * creation
+integerCreation (pi,li) (pc,lc) = if del==0 then 0 else prod / fromIntegral (partZ pc0) where
+	prod = product [powerMonomial (subpart (pi,li) a) (subpart (pc,lc) a) | a<-[1..22]]
+	(pc0,pi0) = (subpart (pc,lc) 0 , subpart (pi,li) 0)
+	(pcz,piz) = (subpart (pc,lc) 23, subpart (pi,li)23)
+	del = delta pc0 pi0 * delta pcz piz
 
+-- Ganzzahlige Basis nach Qin / Wang
+-- creation = creationInteger * integerBase
+creationInteger (pc,lc) (pi,li) = if del==0 then 0 else prod * partZ pc0 where
+	prod = product [monomialPower (subpart (pc,lc) a) (subpart (pi,li) a) | a<-[1..22]]
+	(pc0,pi0) = (subpart (pc,lc) 0 , subpart (pi,li) 0)
+	(pcz,piz) = (subpart (pc,lc) 23, subpart (pi,li)23)
+	del = delta pc0 pi0 * delta pcz piz
+
+-- Hilfsfunktion: Filtert Erzeugerkompositionen
+subpart (PartLambda pl,l) a = PartLambda $ sb pl l where
+	sb [] _ = []
+	sb pl [] = sb pl [0,0..]
+	sb (e:pl) (la:l) = if la == a then e: sb pl l else sb pl l
 
 p211 = PartLambda [2,1,1::Int]
 p31 = PartLambda [3,1::Int]
