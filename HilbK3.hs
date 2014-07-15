@@ -24,11 +24,11 @@ cupHilb (pc,lc) (pa,la) (pb,lb) = if isZero then 0 else res where
 -- CupProdukt auf symmetrisiertem A{S_n}
 cupSA :: (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> K3Domain
 cupSA (pc,lc) (pa,la) (pb,lb) = sum [res pi | pi <- partAllPerms pa] where
-	tau = partPermute pb
+	pitau = partPermute pc
 	sortedOrbits pi = Data.List.sortBy (flip compare) $ map Set.fromList $ cycles pi
-	res pi = if cycpitau == pc then cupSc else 0 where 
-		pitau = compose pi tau
-		cycpitau = PartLambda $ Data.List.sortBy (flip compare) $ map length $ cycles pitau
+	res pi = if cyctau == pb then cupSc else 0 where 
+		tau = compose (inverse pi) pitau
+		cyctau = PartLambda $ Data.List.sortBy (flip compare) $ map length $ cycles tau
 		cmn = map Set.fromList $ commonOrbits pi tau
 		cl = [(or,i) | or <- sortedOrbits pitau | i<-lc]
 		bl = [(or,i) | or <- sortedOrbits tau | i<-lb]
