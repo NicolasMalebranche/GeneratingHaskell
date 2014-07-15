@@ -8,6 +8,11 @@ import LinearAlgebra
 
 type K3Domain = Int
 
+-- Grad der Klassen einer K3 Fläche
+degK3 :: (Num d) => K3Domain -> d
+degK3 0 = 0 
+degK3 23 = 4
+degK3 i = if i>0 && i < 23 then 2 else error "Not a K3 index"
 
 e8 = array ((1,1),(8,8)) $
 	zip [(i,j) | i <- [1..8],j <-[1..8]] [
