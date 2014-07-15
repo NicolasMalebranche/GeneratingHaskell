@@ -49,6 +49,7 @@ cupSym cList commonOrbits aList bList = product [ sum (x o) | o <- commonOrbits 
 
 -- Ganzzahlige Basis nach Qin / Wang
 -- integerBase = integerCreation * creation
+-- Achtung: Koffizienten sind nur rational!
 integerCreation (pi,li) (pc,lc) = if del==0 then 0 else prod / fromIntegral (partZ pc0) where
 	prod = product [powerMonomial (subpart (pi,li) a) (subpart (pc,lc) a) | a<-[1..22]]
 	(pc0,pi0) = (subpart (pc,lc) 0 , subpart (pi,li) 0)
@@ -63,13 +64,50 @@ creationInteger (pc,lc) (pi,li) = if del==0 then 0 else prod * partZ pc0 where
 	(pcz,piz) = (subpart (pc,lc) 23, subpart (pi,li)23)
 	del = delta pc0 pi0 * delta pcz piz
 
+degHilbK3 (lam,a) = 2*partDegree lam + sum [degK3 i | i<- a]
+
+-- Basis von Hilb^n(K3) vom Grad d 
+hilbBase n d = map ((\(a,b)->(PartLambda a,b)).unzip) $ hilbOperators n d  
+
+-- Alle möglichen Kombinationen von Erzeugungsoperatoren von 
+-- Gewicht n und Grad d
+hilbOperators = memo2 hb where 
+	hb 0 0 = [[]] --Leeres Operatorprodukt
+	hb n d = if n<0 || odd d || d<0 then [] else 
+		nub $ map (Data.List.sortBy (flip compare)) $ f n d
+	f n d = [(nn,0):x | nn <-[1..n], x<-hilbOperators(n-nn)(d-2*nn+2)] ++
+		[(nn,a):x | nn<-[1..n::Int], a <-[1..2], x<-hilbOperators(n-nn)(d-2*nn)] ++
+		[(nn,23):x | nn <-[1..n], x<-hilbOperators(n-nn)(d-2*nn-2)] 
+
+-- Baut die Indizes des symmetrischen Produkts
+sym2 vs = concat [map (\v2-> (v1,v2)) (drop i vs) | v1<-vs| i<-[0..]]
+
+cupIntegral (pc,lc) (pa,la) (pb,lb) = res where
+	(nc,dc) = (partWeight pc, degHilbK3 (pc,lc))
+	(na,da) = (partWeight pa, degHilbK3 (pa,la))
+	(nb,db) = (partWeight pb, degHilbK3 (pb,lb))
+	doubBase = [(x,y) | x<- hilbBase na da , y <- hilbBase nb db ]
+	ch c (x,y) = cupHilb c x y
+	ci (x,y) (a,b) = creationInteger x a * creationInteger y b -- CreationInteger austauschen?
+	m1 = mM doubBase ch ci
+	m1R i j = fromIntegral $ m1 i j
+	m2 = mM (hilbBase nc dc) integerCreation m1R 
+	res = m2 (pc,lc) ((pa,la),(pb,lb))
+
+
 -- Hilfsfunktion: Filtert Erzeugerkompositionen
 subpart (PartLambda pl,l) a = PartLambda $ sb pl l where
 	sb [] _ = []
 	sb pl [] = sb pl [0,0..]
 	sb (e:pl) (la:l) = if la == a then e: sb pl l else sb pl l
 
-p211 = PartLambda [2,1,1::Int]
-p31 = PartLambda [3,1::Int]
-p4 = PartLambda [4::Int]
-p22 = PartLambda [2,2::Int]
+p211 = fst b211 
+p22 = fst b22
+p31 = fst b31
+p3 = fst b3
+p21 = fst b21
+b211 = (PartLambda [2,1,1::Int] , [0,0,0::K3Domain])
+b31 = (PartLambda [3,1::Int] , [0,0::K3Domain])
+b22 = (PartLambda [2,2::Int] , [0,0::K3Domain])
+b3 = (PartLambda [3::Int] , [0::K3Domain])
+b21= (PartLambda [2,1::Int] , [0,0::K3Domain])
