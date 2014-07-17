@@ -6,6 +6,7 @@ module HilbK3 where
 
 import Data.Array
 import Data.MemoTrie
+import Elementary
 import K3
 import LinearAlgebra
 import Permutation
@@ -14,12 +15,8 @@ import Data.Permute
 import Data.List
 import qualified Data.Set as Set
 import SymmetricFunctions
+import Data.Ratio
 
--- Cup Produkt für Produkte von Erzeugungsoperatoren
-cupHilb (pc,lc) (pa,la) (pb,lb) = if isZero then 0 else res where
-	(wa,wb,wc) =(partWeight pa,partWeight pb,partWeight pc)
-	isZero = wa/=wb || wb/= wc
-	res = cupSA (pc,lc) (pa,la) (pb,lb) * factorial wa
 
 -- CupProdukt auf symmetrisiertem A{S_n}
 --cupSA :: (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> K3Domain
@@ -69,7 +66,7 @@ integerCreation (pi,li) (pc,lc) = if del==0 then 0 else prod / fromIntegral (par
 
 -- Ganzzahlige Basis nach Qin / Wang
 -- creation = creationInteger * integerBase
-creationInteger (pc,lc) (pi,li) = if del==0 then 0 else prod * partZ pc0 where
+creationInteger (pc,lc) (pi,li) = if del==0 then 0 else fromIntegral $ prod * partZ pc0 where
 	prod = product [monomialPower (subpart (pc,lc) a) (subpart (pi,li) a) | a<-[1..22]]
 	(pc0,pi0) = (subpart (pc,lc) 0 , subpart (pi,li) 0)
 	(pcz,piz) = (subpart (pc,lc) 23, subpart (pi,li)23)
@@ -87,23 +84,23 @@ hilbOperators = memo2 hb where
 	hb n d = if n<0 || odd d || d<0 then [] else 
 		nub $ map (Data.List.sortBy (flip compare)) $ f n d
 	f n d = [(nn,0):x | nn <-[1..n], x<-hilbOperators(n-nn)(d-2*nn+2)] ++
-		[(nn,a):x | nn<-[1..n::Int], a <-[1..2], x<-hilbOperators(n-nn)(d-2*nn)] ++
+		[(nn,a):x | nn<-[1..n::Int], a <-[1..22], x<-hilbOperators(n-nn)(d-2*nn)] ++
 		[(nn,23):x | nn <-[1..n], x<-hilbOperators(n-nn)(d-2*nn-2)] 
 
 -- Baut die Indizes des symmetrischen Produkts
 sym2 vs = concat [map (\v2-> (v1,v2)) (drop i vs) | v1<-vs| i<-[0..]]
 
 cupIntegral (pc,lc) (pa,la) (pb,lb) = res where
-	(nc,dc) = (partWeight pc, degHilbK3 (pc,lc))
-	(na,da) = (partWeight pa, degHilbK3 (pa,la))
-	(nb,db) = (partWeight pb, degHilbK3 (pb,lb))
-	doubBase = [(x,y) | x<- hilbBase na da , y <- hilbBase nb db ]
-	ch c (x,y) = cupHilb c x y
-	ci (x,y) (a,b) = creationInteger x a * creationInteger y b -- CreationInteger austauschen?
-	m1 = mM doubBase ch ci
-	m1R i j = fromIntegral $ m1 i j
-	m2 = mM (hilbBase nc dc) integerCreation m1R 
+	doubBase = [(x,y) | x<- nonZero(pa,la) , y <- nonZero(pb,lb)  ]
+	singBase = nonZero(pc,lc)
+	ch c (x,y) = cupSA c x y
+	ci (x,y) (a,b) = integerCreation x a * integerCreation y b 
+	m1 =  mM doubBase ch ci
+	m2 =  mM singBase creationInteger m1
 	res = m2 (pc,lc) ((pa,la),(pb,lb))
+	nonZero (px,lx) =  co where
+		co = map ((\(a,b)->(PartLambda a,b)).unzip.Data.List.sortBy (flip compare).concat) $ combinations $ map allIn [0..23]
+		allIn a = [ [(i,a)|i<-l]| PartLambda l<-map partAsLambda $ partOfWeight $ partWeight $ subpart (px,lx) a ]
 
 
 -- Hilfsfunktion: Filtert Erzeugerkompositionen
