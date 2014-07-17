@@ -119,3 +119,8 @@ b31 = (PartLambda [3,1::Int] , [0,0::K3Domain])
 b22 = (PartLambda [2,2::Int] , [0,0::K3Domain])
 b3 = (PartLambda [3::Int] , [0::K3Domain])
 b21= (PartLambda [2,1::Int] , [0,0::K3Domain])
+
+writef n = writeFile ("Output"++show n++"Neu.txt") $ showM h4 sh2 m where
+	m i (j1,j2) = cupIntegral i j1 j2
+	h4 = hilbBase n 4 
+	sh2 = sym2$hilbBase n 2
