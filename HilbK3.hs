@@ -17,7 +17,6 @@ import qualified Data.Set as Set
 import SymmetricFunctions
 import Data.Ratio
 
-
 -- CupProdukt auf symmetrisiertem A{S_n}
 --cupSA :: (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> K3Domain
 cupSA (pc,lc) (pa,la) (pb,lb) = sum [res pi | pi <- partAllPerms pa] where
@@ -118,6 +117,12 @@ b31 = (PartLambda [3,1::Int] , [0,0::K3Domain])
 b22 = (PartLambda [2,2::Int] , [0,0::K3Domain])
 b3 = (PartLambda [3::Int] , [0::K3Domain])
 b21= (PartLambda [2,1::Int] , [0,0::K3Domain])
+
+b2i i = (partAsLambda$PartAlpha [i,1], [0::K3Domain,0..])
+bai i = (partAsLambda$PartAlpha [i+2], 1:[0::K3Domain,0..])
+b4i i = (partAsLambda$PartAlpha [i,1], 0:1:[0::K3Domain,0..])
+b5i i = (partAsLambda$PartAlpha [i,1], 1:0:[0::K3Domain,0..])
+
 
 writef n = writeFile ("Output"++show n++"Neu.txt") $ showM h4 sh2 m where
 	m i (j1,j2) = cupIntegral i j1 j2
