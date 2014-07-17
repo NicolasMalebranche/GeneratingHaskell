@@ -90,14 +90,13 @@ hilbOperators = memo2 hb where
 -- Baut die Indizes des symmetrischen Produkts
 sym2 vs = concat [map (\v2-> (v1,v2)) (drop i vs) | v1<-vs| i<-[0..]]
 
-cupIntegral (pc,lc) (pa,la) (pb,lb) = res where
-	doubBase = [(x,y) | x<- nonZero(pa,la) , y <- nonZero(pb,lb)  ]
-	singBase = nonZero(pc,lc)
+cupIntegral (pc,lc) (pa,la) (pb,lb) = numerator res where
+	doubBase = [(x,y) | x<-filter (\a->integerCreation a (pa,la)/=0) ( nonZero(pa,la)) , 
+		y <- filter (\a->integerCreation a (pb,lb)/=0)(nonZero(pb,lb))  ]
+	singBase = filter (\a->creationInteger (pc,lc) a/=0) $ nonZero(pc,lc)
 	ch c (x,y) = cupSA c x y
 	ci (x,y) (a,b) = integerCreation x a * integerCreation y b 
-	m1 =  mM doubBase ch ci
-	m2 =  mM singBase creationInteger m1
-	res = m2 (pc,lc) ((pa,la),(pb,lb))
+	res = sum[creationInteger (pc,lc) sb * ch sb db * ci db ((pa,la),(pb,lb)) | sb <- singBase, db <- doubBase]
 	nonZero (px,lx) =  co where
 		co = map ((\(a,b)->(PartLambda a,b)).unzip.Data.List.sortBy (flip compare).concat) $ combinations $ map allIn [0..23]
 		allIn a = [ [(i,a)|i<-l]| PartLambda l<-map partAsLambda $ partOfWeight $ partWeight $ subpart (px,lx) a ]
