@@ -126,5 +126,5 @@ b5i i = (partAsLambda$PartAlpha [i,1], 1:0:[0::K3Domain,0..])
 
 writef n = writeFile ("Output"++show n++"Neu.txt") $ showM h4 sh2 m where
 	m i (j1,j2) = cupIntegral i j1 j2
-	h4 = hilbBase n 4 
+	h4 = reverse $ hilbBase n 4 
 	sh2 = sym2$hilbBase n 2
