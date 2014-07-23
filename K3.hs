@@ -69,10 +69,13 @@ bilK3inv_func ii jj = let
 	0 :: K3Domain
 
 -- Cup Produkt mit zwei Faktoren
-cup k (ii,jj) = r (min ii jj) (max ii jj) where
-	r 0 i = delta k i
-	r i 23 = 0
-	r i j = if k==23 then bilK3_func i j else 0
+cup = memo2 r where
+	r k (0,i) = delta k i
+	r k (i,0) = delta k i
+	r _ (i,23) = 0
+	r _ (23,i) = 0
+	r 23 (i,j) =  bilK3_func i j
+	r _ _ = 0
 
 -- Indizes, an denen das Cup Produkt nicht null ist
 cupNonZeros = [ (k,(i,j)) | i<-[0..23],j<-[0..23], k<-[0..23], cup k (i,j) /= 0]

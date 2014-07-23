@@ -20,27 +20,28 @@ import Debug.Trace
 
 -- CupProdukt auf symmetrisiertem A{S_n}
 --cupSA :: (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> K3Domain
-cupSA (pc,lc) (pa,la) (pb,lb) = sum [res pi | pi <- partAllPerms pa] where
-	pitau = partPermute pc
-	sortedOrbits pi = Data.List.sortBy (flip compare) $ map Set.fromList $ cycles pi
-	permuteGrp (PartLambda l, a) = map concat $ symmetrize $
-		map (snd . unzip) $ groupBy (\a b -> fst a==fst b) $ zip l a
-	symmetrize [] = [[]]
-	symmetrize (l:r) = [pl : a | a <- symmetrize r, pl <- nub $ permutations l]
-	-- Möglichkeiten, die Klassen den Orbits zuzuordnen
-	pga = permuteGrp (pa,la)
-	pgb = permuteGrp (pb,lb)
-	pgc = permuteGrp (pc,lc)
-	res pi = if cyctau == pb then scale cupSc else 0 where 
-		scale cupSc = (cupSc * partZ pa * partZ pb * length pgc) % (partZ pc * length pga * length pgb)
-		tau = compose (inverse pi) pitau
-		cyctau = PartLambda $ Data.List.sortBy (flip compare) $ map length $ cycles tau
-		cmn = map Set.fromList $ commonOrbits pi tau
-		cl = [(or,i) | or <- sortedOrbits pitau | i<-lc]
-		bls r = [(or,i) | or <- sortedOrbits tau | i<-r]
-		als r = [(or,i) | or <- sortedOrbits pi | i<-r]
-		-- Es reicht, über die Möglichkeiten für die Eingabe zu summieren. 
-		cupSc = sum [ cupSym cl cmn (als pla) (bls plb) | pla<-pga, plb<-pgb]
+cupSA = memo3 csa where 
+	csa (pc,lc) (pa,la) (pb,lb) = sum [res pi | pi <- partAllPerms pa] where
+		pitau = partPermute pc
+		sortedOrbits pi = Data.List.sortBy (flip compare) $ map Set.fromList $ cycles pi
+		permuteGrp (PartLambda l, a) = map concat $ symmetrize $
+			map (snd . unzip) $ groupBy (\a b -> fst a==fst b) $ zip l a
+		symmetrize [] = [[]]
+		symmetrize (l:r) = [pl : a | a <- symmetrize r, pl <- nub $ permutations l]
+		-- Möglichkeiten, die Klassen den Orbits zuzuordnen
+		pga = permuteGrp (pa,la)
+		pgb = permuteGrp (pb,lb)
+		pgc = permuteGrp (pc,lc)
+		res pi = if cyctau == pb then scale cupSc else 0 where 
+			scale cupSc = (cupSc * partZ pa * partZ pb * length pgc) % (partZ pc * length pga * length pgb)
+			tau = compose (inverse pi) pitau
+			cyctau = PartLambda $ Data.List.sortBy (flip compare) $ map length $ cycles tau
+			cmn = map Set.fromList $ commonOrbits pi tau
+			cl = [(or,i) | or <- sortedOrbits pitau | i<-lc]
+			bls r = [(or,i) | or <- sortedOrbits tau | i<-r]
+			als r = [(or,i) | or <- sortedOrbits pi | i<-r]
+			-- Es reicht, über die Möglichkeiten für die Eingabe zu summieren. 
+			cupSc = sum [ cupSym cl cmn (als pla) (bls plb) | pla<-pga, plb<-pgb]
 
 
 -- Multiplikation in Lehn & Sorgers A{S_n}
