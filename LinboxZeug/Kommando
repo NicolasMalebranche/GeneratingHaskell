@@ -1,0 +1,5 @@
+g++ -O2 -Wall -o Main Main.cpp /home/skapfer/GAP_Packages/givaro-3.7.2/src/.libs/libgivaro.a /usr/local/lib/liblinbox.a -lgmpxx -lgmp -lblas -llapack 
+
+
+g++ Main.cpp -L/usr/local/lib -lgivaro -llinbox -lgmpxx -lgmp -lblas -llapack
+
