@@ -69,8 +69,8 @@ instance Num Z_p where
 	fromInteger i = Z_p (fromInteger m) $ fromInteger d  where (d,m)= divMod i $ pp ()
 	(+) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod (u+a+b) p
 	(-) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod (u+a-b) p
-	signum (Z_p a r) = Z_p a 0
-	abs = id
+	signum (Z_p a r) = if a==0 then 0 else rtUnityZ_p a
+	abs (Z_p a _) = if a==0 then undefined else 1
 	-- Achtung! Es wird nur einmal Übertrag gemacht.
 	(*) (Z_p afst arst) = carry_p . f facc arst where
 		f acc ale br = Z_p (acc br) $ f newacc ar br where
@@ -153,7 +153,7 @@ instance Num Q_p where
 	abs (Q_p o r) = n (-o) r where
 		n no (Z_p a r) = if no + q_pPrec < 0 then 0 else 
 			if a==0 then n (no-1) r else Q_p no 1
-	signum = id
+	signum z = s (cleanQ_p z) where s (Q_p o r) = Q_p 0 $ signum r
 
 instance Fractional Q_p where
 	fromRational 0 = Q_p 0 0
