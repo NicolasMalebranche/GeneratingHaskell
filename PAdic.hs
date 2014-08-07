@@ -4,6 +4,7 @@
 module PAdic where
 
 import PowerSeries
+import Math.Combinatorics.Exact.Binomial
 import System.IO.Unsafe
 import Data.IORef
 import Data.Ratio
@@ -14,7 +15,7 @@ type Digit = Int
 -- p, als globale Variable. Voreinstellung ist 2
 {-# NOINLINE pRef #-}
 pRef :: IORef Digit
-pRef = unsafePerformIO $ newIORef 2
+pRef = unsafePerformIO $ newIORef 5
 p = unsafePerformIO $ readIORef pRef
 
 -----------------------------------------------------------------------------------------
@@ -23,7 +24,7 @@ p = unsafePerformIO $ readIORef pRef
 data Z_p = Z_p (PowerSeries Digit)
 
 -- Übertrag 
-carry_p r = c 0 r where
+carry_p = c 0 where
 	c a (Elem i r) = Elem m $ c d r where (d,m) = divMod (a+i) p
 
 -- Wandelt Potenzreihe in Z_p-Zahl um
@@ -90,6 +91,16 @@ sqrtZ_p (Z_p x) = Z_p $ if p==2 then sq2 x else sqp x where
 	sqp (Elem b x) = Elem a w where
 		a = sqrtMod_p b 
 		w = carry_p $ invZ_p (2*a) * (x - Elem (div (a^2-b) p) (w^2))
+
+-- p-1. Einheitswurzeln mit gegebener erster Ziffer a /= 0
+rtUnityZ_p a' = Z_p $ Elem a w where
+	a = a' `mod` p
+	Z_p c = (1-fromIntegral a^(p-1)) / fromIntegral a^(p-2)
+	(ai,p1i) = (invZ_p a, invZ_p (p-1))
+	wa = carry_p $ w * ai
+	psum k wp = if k>p-1 then 0 else Elem 0 (psum (k+1) (carry_p(wp*wa)) ) + 
+		fmap (* choose(p-1)k) wp
+	w = carry_p $ p1i*(seriesShift (-1) c - Elem 0 (carry_p(w*wa)*psum 2 1))
 
 instance Show Z_p where
 	show (Z_p r) = if p > 10 then it else sch where
@@ -167,6 +178,9 @@ instance Floating Q_p where
 	cos = inExpSeriesQ_p $ cycle [1,0,-1,0]
 	sinh =inExpSeriesQ_p $ cycle [0,1,0,1]
 	cosh =inExpSeriesQ_p $ cycle [1,0,1,0]
+	sqrt (Q_p o r) = cleanQ_p $ Q_p h w where
+		h = (o+1) `div` 2
+		Z_p w = sqrtZ_p $ Z_p $ if odd o then Elem 0 r else r
 
 instance Show Q_p where
 	show (Q_p o r) = if p > 10 then it else sch where
