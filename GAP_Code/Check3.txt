@@ -1,0 +1,9 @@
+
+
+for i in [1..2554] do
+	k := 1;
+	for j in [1..6877] do
+		k := k * (1 - RemInt(a[i][j],3));
+	od;
+	if k=1 then Print(i,"\n") ; fi;
+od;
