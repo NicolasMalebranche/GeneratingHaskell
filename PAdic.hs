@@ -35,6 +35,10 @@ euclid a b = (gcd, (y - x*d, x)) where
 	(d,m) = divMod b a
 	(gcd, (x, y)) = euclid m a
 
+-- Zählt p-Potenzen in einer Zahl
+order_p i = if m==0 then 1+order_p d else 0 where 
+	(d,m) = divMod i $ fromIntegral p
+
 -- Inverses modulo p
 invMod_p n = if gcd == 1 then mod x p else error $"division by "++show n++" mod "++show p where
 	(gcd,(x,_)) = euclid nn p
@@ -100,3 +104,79 @@ instance Show Z_p where
 		ps i (Elem x r) a = if i > maxDigits then a else ps (i+1) r (show x ++a)
 
 -----------------------------------------------------------------------------------------
+
+-- Q_p. o ist die Ordnung
+-- Im Prinzip die Reimplementierung von Laurentreihen.
+data Q_p = Q_p Int (PowerSeries Digit) 
+
+-- Präzisions-Potenz für Laurentreihen. Braucht man zum Invertieren.
+{-# NOINLINE q_pPrecRef #-}
+q_pPrecRef = unsafePerformIO $ newIORef 60
+q_pPrec = unsafePerformIO $ readIORef q_pPrecRef 
+
+-- Wandelt Potenzreihe in Q_p-Zahl um
+makeQ_p r = Q_p 0 $ c 0 r where
+	c a (Elem i r) = Elem m $ c d r where (d,m) = divMod (a+i) p
+
+-- Schneidet führende Nullen ab
+cleanQ_p (Q_p o p) = c o p where 
+	c o (Elem 0 p) = if o>q_pPrec then Q_p q_pPrec p else c (o+1) p
+	c o p = Q_p o p
+
+instance Num Q_p where
+	Q_p o r + Q_p o' r' = if o<=o' then Q_p o $carry_p (r + seriesShift (o'-o) r') else
+			Q_p o' $ carry_p (seriesShift (o-o') r + r') 
+	negate (Q_p o r) = Q_p o $ carry_p $ negate r
+	fromInteger 0 = Q_p 0 0
+	fromInteger i = f 0 i where
+		f o i = if m==0 then f (o+1) d else Q_p o (c i) where (d,m)=divMod i $ fromIntegral p
+		c i = Elem (fromInteger m) $ c d  where (d,m) = divMod i $ fromIntegral p
+	Q_p o r * Q_p o' r' = Q_p (o+o') $ carry_p $ r*r'
+	-- Q_p Norm
+	abs (Q_p o r) = n (-o) r where
+		n no (Elem a r) = if no + q_pPrec < 0 then 0 else 
+			if a==0 then n (no-1) r else Q_p no 1
+	signum = id
+
+instance Fractional Q_p where
+	fromRational 0 = Q_p 0 0
+	fromRational r = Q_p o q where
+		(z,n,pp) = (numerator r, denominator r,fromIntegral p)
+		dd i = if m==0 then dd d else i where (d,m) = divMod i pp
+		o = order_p z - order_p n
+		Z_p q = fromRational (dd z % dd n)
+	Q_p o r / qr = Q_p (o-o') q where
+		Q_p o' r' = cleanQ_p qr
+		Z_p q = Z_p r/Z_p r'
+
+-- Setzt eine Q_p-Zahl in eine exp-artige Reihe ein
+inExpSeriesQ_p coeffs rx = if (p-1)*o<=1 then error "series not convergent" else makeQ_p e where
+	Q_p o r = cleanQ_p rx
+	e = f 1 0 1 coeffs
+	f n sh rp (c:co) = carry_p value where
+		value = summand + seriesShift si (fakt * f (n+1) (sh+ds) (carry_p (rp*r)) co)
+		summand = seriesShift sh $ fmap (c*) rp
+		z = order_p n
+		si = if n `mod` (p-1) == 0 then o-1 else o
+		fakt = invZ_p (n `div` (p^z))
+		ds = o-si-z
+
+instance Floating Q_p where
+	exp = inExpSeriesQ_p $ repeat 1
+	sin = inExpSeriesQ_p $ cycle [0,1,0,-1]
+	cos = inExpSeriesQ_p $ cycle [1,0,-1,0]
+	sinh =inExpSeriesQ_p $ cycle [0,1,0,1]
+	cosh =inExpSeriesQ_p $ cycle [1,0,1,0]
+
+instance Show Q_p where
+	show (Q_p o r) = if p > 10 then it else sch where
+		maxIts = 5
+		it = "[.." ++ tail(show $ reverse $ take maxIts $ f (1%p^o) 0 r )
+		f i acc (Elem a r) = na : f (i*fromIntegral p) na r where na = i*fromIntegral a+acc
+		maxDigits = 20
+		sch = w $ ps o r $ if o>0 then replicate o '0' ++ "." else ""
+		w "0" = "..0"
+		w ('0':'.':r) = "..0."++r
+		w ('0':r) = w r
+		w r = ".."++r
+		ps i (Elem x r) a = if i > maxDigits then a else ps (i+1) r (show x ++(if i==0 then "." else"")++a)
