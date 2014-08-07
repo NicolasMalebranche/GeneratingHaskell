@@ -3,7 +3,6 @@
 -- Modul für p-adische Zahlen
 module PAdic where
 
-import PowerSeries
 import Math.Combinatorics.Exact.Binomial
 import System.IO.Unsafe
 import Data.IORef
@@ -15,20 +14,17 @@ type Digit = Int
 -- p, als globale Variable. Voreinstellung ist 2
 {-# NOINLINE pRef #-}
 pRef :: IORef Digit
-pRef = unsafePerformIO $ newIORef 5
+pRef = unsafePerformIO $ newIORef 2
 p = unsafePerformIO $ readIORef pRef
+pp _ = fromIntegral p
 
 -----------------------------------------------------------------------------------------
 
 -- Datentyp für Z_p über einer Zahl p
-data Z_p = Z_p (PowerSeries Digit)
+data Z_p = Z_p Digit Z_p
 
 -- Übertrag 
-carry_p = c 0 where
-	c a (Elem i r) = Elem m $ c d r where (d,m) = divMod (a+i) p
-
--- Wandelt Potenzreihe in Z_p-Zahl um
-makeZ_p r = Z_p $ carry_p r
+carry_p = c 0 where c a (Z_p i r) = Z_p m $ c d r where (d,m) = divMod (a+i) p
 
 -- Erweiterter Euklidischer Algorithmus
 euclid 0 b = (b, (0, 1))
@@ -37,136 +33,142 @@ euclid a b = (gcd, (y - x*d, x)) where
 	(gcd, (x, y)) = euclid m a
 
 -- Zählt p-Potenzen in einer Zahl
+-- Achtung! Terminiert nicht, wenn 0 eingegeben wird
 order_p i = if m==0 then 1+order_p d else 0 where 
-	(d,m) = divMod i $ fromIntegral p
+	(d,m) = divMod i $ pp()
+
+-- orderRem_p n = (o,r) wobei n==(p^o)*r und o maximal
+-- Achtung! Terminiert nicht, wenn 0 eingegeben wird
+orderRem_p = c 0 where 
+	c o n = if m==0 then c (o+1) d else (o,n) where (d,m) = divMod n $ pp()
 
 -- Inverses modulo p
 invMod_p n = if gcd == 1 then mod x p else error $"division by "++show n++" mod "++show p where
 	(gcd,(x,_)) = euclid nn p
-	nn = fromIntegral $ mod n $ fromIntegral p
-
--- Inverses einer Zahl in Z_p, aber als Potenzreihe
-invZ_p :: Digit -> PowerSeries Digit
-invZ_p a = d 1 where
-	a' = invMod_p a
-	d c = Elem t $ d $ div (c-a*t) p where t = mod (c*a') p
+	nn = fromIntegral $ mod n $ pp ()
 
 -- Wurzel modulo p, einfach durch Ausprobieren
 sqrtMod_p n = f 0 where
 	f i = if mod(i^2 - n) p == 0 then i else if i<p then f (i+1) else
 		error $ show n++" admits no sqrt mod "++show p
 
+-- Multipliziert mit p^k in Z_p. Schneidet Ziffern ab, falls k < 0
+shiftZ_p k = if k < 0 then left k else right k where
+	right k z = if k==0 then z else Z_p 0 $ right (k-1) z
+	left k (Z_p _ r) = if k== -1 then r else left (k+1) r
+
+-- Multipliziert eine Z_p Zahl mit einem Skalar s
+multZ_p s = c 0 where c u (Z_p a r) = Z_p m $ c d r where (d,m) = divMod (s*a+u) p
+
+-- Inverses einer ganzen Zahl in Z_p
+invZ_p a = d 1 where
+	a' = invMod_p a
+	d c = Z_p t $ d $ div (c-a*t) p where t = mod (c*a') p
+
 instance Num Z_p where
-	fromInteger i = Z_p $ c i where
-		c i = Elem (fromInteger m) $ c d  where (d,m) = divMod i $ fromIntegral p
-	Z_p x + Z_p y = makeZ_p $ x+y
-	Z_p x - Z_p y = makeZ_p $ x-y
-	Z_p x * Z_p y = makeZ_p $ x*y
-	signum (Z_p (Elem a r)) = Z_p $ Elem a $ nullSeries ()
+	fromInteger i = Z_p (fromInteger m) $ fromInteger d  where (d,m)= divMod i $ pp ()
+	(+) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod (u+a+b) p
+	(-) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod (u+a-b) p
+	signum (Z_p a r) = Z_p a 0
 	abs = id
+	-- Achtung! Es wird nur einmal Übertrag gemacht.
+	(*) (Z_p afst arst) = carry_p . f facc arst where
+		f acc ale br = Z_p (acc br) $ f newacc ar br where
+			Z_p a ar = ale
+			newacc (Z_p b rb) = a*b + acc rb
+		facc (Z_p b rb) = afst*b
 
 instance Fractional Z_p where
-	Z_p (Elem c rC) / Z_p (Elem a rA) = Z_p bb where
+	Z_p c rC / Z_p a rA = bb where
 		a' = invMod_p a
-		d c = Elem t $ d $ div (c-a*t) p where t = mod (c*a') p
+		d c = Z_p t $ d $ div (c-a*t) p where t = mod (c*a') p
 		b = mod (c*a') p
-		r = Elem (div (c-a*b) p) 0
-		bb = Elem b $ carry_p $ d 1 * (r + rC - rA*bb)
-	fromRational r = Z_p $ d $ numerator r where
+		r = Z_p (div (c-a*b) p) 0
+		bb = Z_p b $ d 1 * (r + rC - rA*bb)
+	fromRational r = d $ numerator r where
 		a = denominator r
 		a' = fromIntegral $ invMod_p a
-		pp = fromIntegral p
-		d c = Elem (fromIntegral b) $ d $ div (c-a*b) pp where 
-			b = mod (c*a') pp
+		d c = Z_p (fromIntegral b) $ d $ div (c-a*b) $ pp() where 
+			b = mod (c*a') $ pp()
 
 -- Quadratwurzel
-sqrtZ_p (Z_p x) = Z_p $ if p==2 then sq2 x else sqp x where
-	sq2 (Elem 0 (Elem 0 x)) = Elem 0 $ sq2 x
-	sq2 (Elem 1 (Elem 0 (Elem 0 (Elem x0 x1)))) = w where
+sqrtZ_p x= if p==2 then sq2 x else sqp x where
+	sq2 (Z_p 0 (Z_p 0 x)) = Z_p 0 $ sq2 x
+	sq2 (Z_p 1 (Z_p 0 (Z_p 0 (Z_p x0 x1)))) = w where
 		y0 = if odd x0 then 1 else 0
-		y1 = carry_p $ if y0 == 0 then Elem 0 (x1-y1^2) else Elem 0 (x1-y1^2-y1)
-		w = Elem 1 $ Elem y0 y1
+		y1 = if y0 == 0 then Z_p 0 (x1-y1^2) else Z_p 0 (x1-y1^2-y1)
+		w = Z_p 1 $ Z_p y0 y1
 	sq2 _ = error "admits no sqare root"
-	sqp (Elem 0 (Elem 0 x)) = Elem 0 $ sqp x
-	sqp (Elem b x) = Elem a w where
+	sqp (Z_p 0 (Z_p 0 x)) = Z_p 0 $ sqp x
+	sqp (Z_p b x) = Z_p a w where
 		a = sqrtMod_p b 
-		w = carry_p $ invZ_p (2*a) * (x - Elem (div (a^2-b) p) (w^2))
+		w =  invZ_p (2*a) * (x - Z_p (div (a^2-b) p) (w^2))
 
 -- p-1. Einheitswurzeln mit gegebener erster Ziffer a /= 0
-rtUnityZ_p a' = Z_p $ Elem a w where
+rtUnityZ_p a' = Z_p a w where
 	a = a' `mod` p
-	Z_p c = (1-fromIntegral a^(p-1)) / fromIntegral a^(p-2)
+	Z_p _ c = (1-fromIntegral a^(p-1)) / fromIntegral a^(p-2)
 	(ai,p1i) = (invZ_p a, invZ_p (p-1))
-	wa = carry_p $ w * ai
-	psum k wp = if k>p-1 then 0 else Elem 0 (psum (k+1) (carry_p(wp*wa)) ) + 
-		fmap (* choose(p-1)k) wp
-	w = carry_p $ p1i*(seriesShift (-1) c - Elem 0 (carry_p(w*wa)*psum 2 1))
+	wa = w * ai
+	psum k wp = if k>p-1 then 0 else Z_p 0 (psum (k+1) (wp*wa) ) + 
+		fromIntegral (choose (pp()-1) (toInteger k)) * wp
+	w = p1i * (c - Z_p 0 (w*wa*psum 2 1))
 
 instance Show Z_p where
-	show (Z_p r) = if p > 10 then it else sch where
+	show r = if p > 10 then it else sch where
 		maxIts = 5
 		it = "[.." ++ tail(show $ reverse $ take maxIts $ f 1 0 r )
-		f i acc (Elem a r) = na : f (i*p) na r where na = i*a+acc
-		maxDigits = 20
+		f i acc (Z_p a r) = na : f (i*p) na r where na = i*a+acc
+		maxDigits = 100
 		sch = w $ ps 0 r ""
 		w "0" = "..0"
 		w ('0':r) = w r
 		w r = ".."++r
-		ps i (Elem x r) a = if i > maxDigits then a else ps (i+1) r (show x ++a)
+		ps i (Z_p x r) a = if i > maxDigits then a else ps (i+1) r (show x ++a)
 
 -----------------------------------------------------------------------------------------
 
 -- Q_p. o ist die Ordnung
 -- Im Prinzip die Reimplementierung von Laurentreihen.
-data Q_p = Q_p Int (PowerSeries Digit) 
+data Q_p = Q_p Int Z_p
 
 -- Präzisions-Potenz für Laurentreihen. Braucht man zum Invertieren.
 {-# NOINLINE q_pPrecRef #-}
 q_pPrecRef = unsafePerformIO $ newIORef 60
 q_pPrec = unsafePerformIO $ readIORef q_pPrecRef 
 
--- Wandelt Potenzreihe in Q_p-Zahl um
-makeQ_p r = Q_p 0 $ c 0 r where
-	c a (Elem i r) = Elem m $ c d r where (d,m) = divMod (a+i) p
-
--- Schneidet führende Nullen ab
+-- Schneidet führende Nullen ab. Terminiert nach spätestens q_pPrec Schritten.
 cleanQ_p (Q_p o p) = c o p where 
-	c o (Elem 0 p) = if o>q_pPrec then Q_p q_pPrec p else c (o+1) p
+	c o (Z_p 0 p) = if o>q_pPrec then Q_p q_pPrec p else c (o+1) p
 	c o p = Q_p o p
 
 instance Num Q_p where
-	Q_p o r + Q_p o' r' = if o<=o' then Q_p o $carry_p (r + seriesShift (o'-o) r') else
-			Q_p o' $ carry_p (seriesShift (o-o') r + r') 
+	Q_p o r + Q_p o' r' = if o<=o' then Q_p o (r + shiftZ_p (o'-o) r') else
+			Q_p o' (shiftZ_p (o-o') r + r') 
 	negate (Q_p o r) = Q_p o $ carry_p $ negate r
 	fromInteger 0 = Q_p 0 0
-	fromInteger i = f 0 i where
-		f o i = if m==0 then f (o+1) d else Q_p o (c i) where (d,m)=divMod i $ fromIntegral p
-		c i = Elem (fromInteger m) $ c d  where (d,m) = divMod i $ fromIntegral p
-	Q_p o r * Q_p o' r' = Q_p (o+o') $ carry_p $ r*r'
+	fromInteger i = Q_p o (fromInteger r) where (o,r)=orderRem_p i
+	Q_p o r * Q_p o' r' = Q_p (o+o') (r*r')
 	-- Q_p Norm
 	abs (Q_p o r) = n (-o) r where
-		n no (Elem a r) = if no + q_pPrec < 0 then 0 else 
+		n no (Z_p a r) = if no + q_pPrec < 0 then 0 else 
 			if a==0 then n (no-1) r else Q_p no 1
 	signum = id
 
 instance Fractional Q_p where
 	fromRational 0 = Q_p 0 0
-	fromRational r = Q_p o q where
-		(z,n,pp) = (numerator r, denominator r,fromIntegral p)
-		dd i = if m==0 then dd d else i where (d,m) = divMod i pp
-		o = order_p z - order_p n
-		Z_p q = fromRational (dd z % dd n)
-	Q_p o r / qr = Q_p (o-o') q where
-		Q_p o' r' = cleanQ_p qr
-		Z_p q = Z_p r/Z_p r'
+	fromRational r = Q_p (oz-on) (fromRational (rz%rn)) where
+		(z,n) = (numerator r, denominator r)
+		(oz,rz) = orderRem_p z
+		(on,rn) = orderRem_p n
+	Q_p o r / qr = Q_p (o-o') (r/r') where Q_p o' r' = cleanQ_p qr
 
 -- Setzt eine Q_p-Zahl in eine exp-artige Reihe ein
-inExpSeriesQ_p coeffs rx = if (p-1)*o<=1 then error "series not convergent" else makeQ_p e where
+inExpSeriesQ_p coeffs rx = if (p-1)*o<=1 then error "series not convergent" else e where
 	Q_p o r = cleanQ_p rx
-	e = f 1 0 1 coeffs
-	f n sh rp (c:co) = carry_p value where
-		value = summand + seriesShift si (fakt * f (n+1) (sh+ds) (carry_p (rp*r)) co)
-		summand = seriesShift sh $ fmap (c*) rp
+	e = cleanQ_p $ Q_p 0 $ f 1 0 1 coeffs
+	f n sh rp (c:co) = summand + shiftZ_p si (fakt * f (n+1) (sh+ds) (rp*r) co) where
+		summand = shiftZ_p sh $ multZ_p c rp
 		z = order_p n
 		si = if n `mod` (p-1) == 0 then o-1 else o
 		fakt = invZ_p (n `div` (p^z))
@@ -180,17 +182,17 @@ instance Floating Q_p where
 	cosh =inExpSeriesQ_p $ cycle [1,0,1,0]
 	sqrt (Q_p o r) = cleanQ_p $ Q_p h w where
 		h = (o+1) `div` 2
-		Z_p w = sqrtZ_p $ Z_p $ if odd o then Elem 0 r else r
+		w = sqrtZ_p $ if odd o then Z_p 0 r else r
 
 instance Show Q_p where
 	show (Q_p o r) = if p > 10 then it else sch where
 		maxIts = 5
 		it = "[.." ++ tail(show $ reverse $ take maxIts $ f (1%p^o) 0 r )
-		f i acc (Elem a r) = na : f (i*fromIntegral p) na r where na = i*fromIntegral a+acc
+		f i acc (Z_p a r) = na : f (i*fromIntegral p) na r where na = i*fromIntegral a+acc
 		maxDigits = 20
 		sch = w $ ps o r $ if o>0 then replicate o '0' ++ "." else ""
 		w "0" = "..0"
 		w ('0':'.':r) = "..0."++r
 		w ('0':r) = w r
 		w r = ".."++r
-		ps i (Elem x r) a = if i > maxDigits then a else ps (i+1) r (show x ++(if i==0 then "." else"")++a)
+		ps i (Z_p x r) a = if i > maxDigits then a else ps (i+1) r (show x ++(if i==0 then "." else"")++a)
