@@ -39,6 +39,7 @@ order_p i = if m==0 then 1+order_p d else 0 where
 
 -- orderRem_p n = (o,r) wobei n==(p^o)*r und o maximal
 -- Achtung! Terminiert nicht, wenn 0 eingegeben wird
+orderRem_p :: (Integral i,Integral j) => i -> (j,i)
 orderRem_p = c 0 where 
 	c o n = if m==0 then c (o+1) d else (o,n) where (d,m) = divMod n $ pp()
 
@@ -107,19 +108,27 @@ sqrtZ_p x= if p==2 then sq2 x else sqp x where
 -- p-1. Einheitswurzeln mit gegebener erster Ziffer a /= 0
 rtUnityZ_p a' = Z_p a w where
 	a = a' `mod` p
-	Z_p _ c = (1-fromIntegral a^(p-1)) / fromIntegral a^(p-2)
+	Z_p _ c = (1-fromIntegral (toInteger a^(p-1))) / fromIntegral (toInteger a^(p-2))
 	(ai,p1i) = (invZ_p a, invZ_p (p-1))
 	wa = w * ai
 	psum k wp = if k>p-1 then 0 else Z_p 0 (psum (k+1) (wp*wa) ) + 
 		fromIntegral (choose (pp()-1) (toInteger k)) * wp
 	w = p1i * (c - Z_p 0 (w*wa*psum 2 1))
 
+-- Wendet Newtonverfahren auf einen Startwert a an. f(a) muß Ordnung mindestens 1 haben.
+newtonZ_p f f' a = Z_p a' $ t 1 a where
+	Z_p a' _ = a
+	interval (a,b) = k 0 where
+		k i (Z_p e r) z = if i<a then k (i+1) r z else if i<b then Z_p e $ k (i+1) r z else z
+	t i x = interval (i,2*i) y $ t (2*i) y where
+		y = x - f x / f' x
+
 instance Show Z_p where
 	show r = if p > 10 then it else sch where
 		maxIts = 5
 		it = "[.." ++ tail(show $ reverse $ take maxIts $ f 1 0 r )
 		f i acc (Z_p a r) = na : f (i*p) na r where na = i*a+acc
-		maxDigits = 100
+		maxDigits = 20
 		sch = w $ ps 0 r ""
 		w "0" = "..0"
 		w ('0':r) = w r
@@ -167,12 +176,27 @@ instance Fractional Q_p where
 inExpSeriesQ_p coeffs rx = if (p-1)*o<=1 then error "series not convergent" else e where
 	Q_p o r = cleanQ_p rx
 	e = cleanQ_p $ Q_p 0 $ f 1 0 1 coeffs
-	f n sh rp (c:co) = summand + shiftZ_p si (fakt * f (n+1) (sh+ds) (rp*r) co) where
+	f n sh rp (c:co) = summand + shiftZ_p si (invZ_p rem *f (n+1)(sh+ds)(rp*r) co) where
 		summand = shiftZ_p sh $ multZ_p c rp
-		z = order_p n
+		(z,rem) = orderRem_p n
 		si = if n `mod` (p-1) == 0 then o-1 else o
-		fakt = invZ_p (n `div` (p^z))
 		ds = o-si-z
+
+-- Setzt eine Q_p-Zahl in eine log-artige Reihe ein
+inLogSeriesQ_p coeffs rx = if o<1 then error "series not convergent" else e where
+	Q_p o r = cleanQ_p rx
+	e = cleanQ_p $ Q_p o $ f 1 0 r coeffs
+	f n sh rp (c:co) = summand + shiftZ_p si (f (n+1) (sh+o-si) (rp*r) co) where
+		summand = shiftZ_p (sh-z) $ multZ_p c rp * invZ_p rem
+		(z,rem) = orderRem_p n
+		si = if rn == 1 then o-1 else o where (_,rn) = orderRem_p n
+
+-- Setzt p mal eine Z_p-Zahl in eine log-artige Reihe ein
+inLogSeriesZ_p coeffs r = f 1 1 r coeffs where
+	f n sh rp (c:co) = summand + shiftZ_p si (f (n+1) (sh+1-si) (rp*r) co) where
+		summand = shiftZ_p (sh-z) $ multZ_p c rp * invZ_p rem
+		(z,rem) = orderRem_p n
+		si = if rn == 1 then 0 else 1 where (_,rn) = orderRem_p n
 
 instance Floating Q_p where
 	exp = inExpSeriesQ_p $ repeat 1
@@ -183,6 +207,18 @@ instance Floating Q_p where
 	sqrt (Q_p o r) = cleanQ_p $ Q_p h w where
 		h = (o+1) `div` 2
 		w = sqrtZ_p $ if odd o then Z_p 0 r else r
+	log = Q_p 1 . l . cleanQ_p where
+		l (Q_p _ r) = logser 1 z where
+			Z_p _ z = r / signum r
+			logser i acc = shiftZ_p(i-1-o1)(acc*invZ_p r1) + 
+				shiftZ_p(i-o2)(zacc*invZ_p r2) +Z_p 0 (logser (i+1) (z*zacc)) where 
+					zacc = z*acc
+					(o1,r1) = orderRem_p (2*i-1)
+					(o2,r2) = orderRem_p (-2*i)
+	atan = a.cleanQ_p where
+		a z@(Q_p o r) = if o == 0 then (inLogSeriesQ_p (cycle [1,0,-1,0]) $ f$ f z)/4 else
+			(inLogSeriesQ_p (cycle [1,0,-1,0]) $ f z)/2
+		f z = 2*z / (1-z^2)
 
 instance Show Q_p where
 	show (Q_p o r) = if p > 10 then it else sch where
