@@ -216,9 +216,11 @@ instance Floating Q_p where
 					(o1,r1) = orderRem_p (2*i-1)
 					(o2,r2) = orderRem_p (-2*i)
 	atan = a.cleanQ_p where
-		a z@(Q_p o r) = if o == 0 then (inLogSeriesQ_p (cycle [1,0,-1,0]) $ f$ f z)/4 else
-			(inLogSeriesQ_p (cycle [1,0,-1,0]) $ f z)/2
-		f z = 2*z / (1-z^2)
+		check = ch 1 where ch n = if p+1 > n then ch (2*n) else if p+1==n then True else False
+		a = if check then aa else inLogSeriesQ_p (cycle [1,0,-1,0]) 
+		aa z@(Q_p o r) = if o>0 then inLogSeriesQ_p (cycle [1,0,-1,0]) z else h * aa (f z) 
+		f z = cleanQ_p (2*z / (1-z^2))
+		h = recip 2
 
 instance Show Q_p where
 	show (Q_p o r) = if p > 10 then it else sch where
