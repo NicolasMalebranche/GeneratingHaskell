@@ -146,6 +146,11 @@ data Q_p = Q_p Int Z_p
 q_pPrecRef = unsafePerformIO $ newIORef 60
 q_pPrec = unsafePerformIO $ readIORef q_pPrecRef 
 
+-- Bestimmt, ob eine Q_p Zahl kleiner als p^q_pPrec ist.
+nearZeroQ_p (Q_p o z) = iter o z where
+	iter o (Z_p 0 r) = if o > q_pPrec then True else iter (o+1) r
+	iter o _ = False
+
 -- Schneidet führende Nullen ab. Terminiert nach spätestens q_pPrec Schritten.
 cleanQ_p (Q_p o p) = c o p where 
 	c o (Z_p 0 p) = if o>q_pPrec then Q_p q_pPrec p else c (o+1) p
@@ -191,36 +196,34 @@ inLogSeriesQ_p coeffs rx = if o<1 then error "series not convergent" else e wher
 		(z,rem) = orderRem_p n
 		si = if rn == 1 then o-1 else o where (_,rn) = orderRem_p n
 
--- Setzt p mal eine Z_p-Zahl in eine log-artige Reihe ein
-inLogSeriesZ_p coeffs r = f 1 1 r coeffs where
-	f n sh rp (c:co) = summand + shiftZ_p si (f (n+1) (sh+1-si) (rp*r) co) where
-		summand = shiftZ_p (sh-z) $ multZ_p c rp * invZ_p rem
-		(z,rem) = orderRem_p n
-		si = if rn == 1 then 0 else 1 where (_,rn) = orderRem_p n
-
 instance Floating Q_p where
+	pi = 0
 	exp = inExpSeriesQ_p $ repeat 1
 	sin = inExpSeriesQ_p $ cycle [0,1,0,-1]
 	cos = inExpSeriesQ_p $ cycle [1,0,-1,0]
 	sinh =inExpSeriesQ_p $ cycle [0,1,0,1]
 	cosh =inExpSeriesQ_p $ cycle [1,0,1,0]
+	atanh x = log ((1+x)/(1-x)) / 2
 	sqrt (Q_p o r) = cleanQ_p $ Q_p h w where
 		h = (o+1) `div` 2
 		w = sqrtZ_p $ if odd o then Z_p 0 r else r
-	log = Q_p 1 . l . cleanQ_p where
-		l (Q_p _ r) = logser 1 z where
-			Z_p _ z = r / signum r
-			logser i acc = shiftZ_p(i-1-o1)(acc*invZ_p r1) + 
-				shiftZ_p(i-o2)(zacc*invZ_p r2) +Z_p 0 (logser (i+1) (z*zacc)) where 
-					zacc = z*acc
-					(o1,r1) = orderRem_p (2*i-1)
-					(o2,r2) = orderRem_p (-2*i)
-	atan = a.cleanQ_p where
-		check = ch 1 where ch n = if p+1 > n then ch (2*n) else if p+1==n then True else False
-		a = if check then aa else inLogSeriesQ_p (cycle [1,0,-1,0]) 
-		aa z@(Q_p o r) = if o>0 then inLogSeriesQ_p (cycle [1,0,-1,0]) z else h * aa (f z) 
+	log = l . cleanQ_p where
+		l (Q_p _ r) = inLogSeriesQ_p (cycle [1,-1]) (Q_p 0 (r/signum r) - 1)
+	atan = a . cleanQ_p where
+		series = inLogSeriesQ_p (cycle [1,0,-1,0])
+		half = recip 2
 		f z = cleanQ_p (2*z / (1-z^2))
-		h = recip 2
+		a z@(Q_p o (Z_p i r))
+			| o > 0 = series z
+			| o < 0 = - series (recip z)
+			| nearZeroQ_p (1-z) || nearZeroQ_p (1+z) = 0 -- ==pi/4
+			| otherwise = half * iter [i] (f z)
+		iter j z@(Q_p o (Z_p i r)) 
+			| o > 0 = series z
+			| o < 0 = -series (recip z)
+			| elem i j = series z -- Wirft einen Fehler, sollte NaN sein.
+			| otherwise = half * iter (i:j) (f z) 
+
 
 instance Show Q_p where
 	show (Q_p o r) = if p > 10 then it else sch where
