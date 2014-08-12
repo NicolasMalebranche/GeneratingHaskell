@@ -196,15 +196,6 @@ inLogSeriesQ_p coeffs rx = if o<1 then error "series not convergent" else e wher
 		(z,rem) = orderRem_p n
 		si = if rn == 1 then o-1 else o where (_,rn) = orderRem_p n
 
--- Setzt eine Q_p-Zahl in eine log-artige Reihe ein. Coeffs sind Z_p-Zahlen
-inASeriesQ_p coeffs rx = if o<1 then error "series not convergent" else e where
-	Q_p o r = cleanQ_p rx
-	e = cleanQ_p $ Q_p o $ f 1 0 r coeffs
-	f n sh rp (c:co) = summand + shiftZ_p si (f (n+1) (sh+o-si) (rp*r) co) where
-		summand = shiftZ_p (sh-z) $ c* rp * invZ_p rem
-		(z,rem) = orderRem_p n
-		si = if rn == 1 then o-1 else o where (_,rn) = orderRem_p n
-
 instance Floating Q_p where
 	pi = 0
 	exp = inExpSeriesQ_p $ repeat 1
@@ -222,23 +213,17 @@ instance Floating Q_p where
 		w = sqrtZ_p $ if odd o then Z_p 0 r else r
 	log = l . cleanQ_p where
 		l (Q_p _ r) = inLogSeriesQ_p (cycle [1,-1]) (Q_p 0 (r/signum r) - 1)
-	atan = if psq then la else a . cleanQ_p where
-		psq = (truncate $ sqrt $ fromIntegral $ p-1)^2 == p-1
+	atan = if mod (p-1) 4 == 0 then la else a.cleanQ_p where
 		la = \x -> log ((x-i)/(x+i)) / (2*i) where i = sqrt(-1)
 		series = inLogSeriesQ_p (cycle [1,0,-1,0])
-		half = recip 2
-		f z = cleanQ_p (2*z / (1-z^2))
-		a z@(Q_p o (Z_p i r))
+		a z@(Q_p o r)
 			| o > 0 = series z
 			| o < 0 = - series (recip z)
-			| nearZeroQ_p (1-z) || nearZeroQ_p (1+z) = 0 -- ==pi/4
-			| otherwise = half * iter [i] (f z)
-		iter j z@(Q_p o (Z_p i r)) 
-			| o > 0 = series z
-			| o < 0 = -series (recip z)
-			| elem i j = series z -- Wirft einen Fehler, sollte NaN sein.
-			| otherwise = half * iter (i:j) (f z) 
-
+			| otherwise = series (make z 1 0 1 0 0) / fromIntegral (p+1)
+		n = toInteger $ p+1
+		make x s k t pp qq | k>n = pp/qq
+			| odd k = make x (-s) (k+1) (t*x) (pp+y) qq
+			| True = make x s (k+1) (t*x) pp (qq+y) where y = t*fromIntegral(s*choose n k)
 
 instance Show Q_p where
 	show (Q_p o r) = if p > 10 then it else sch where
