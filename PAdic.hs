@@ -213,13 +213,14 @@ instance Floating Q_p where
 		w = sqrtZ_p $ if odd o then Z_p 0 r else r
 	log = l . cleanQ_p where
 		l (Q_p _ r) = inLogSeriesQ_p (cycle [1,-1]) (Q_p 0 (r/signum r) - 1)
-	atan = if mod (p-1) 4 == 0 then la else a.cleanQ_p where
+	atan = if mod (p-1) 4 == 0 then la else if p==2 then a2.cleanQ_p else a.cleanQ_p where
 		la = \x -> log ((x-i)/(x+i)) / (2*i) where i = sqrt(-1)
 		series = inLogSeriesQ_p (cycle [1,0,-1,0])
 		a z@(Q_p o r)
 			| o > 0 = series z
 			| o < 0 = - series (recip z)
 			| otherwise = series (make z 1 0 1 0 0) / fromIntegral (p+1)
+		a2 z = if nearZeroQ_p(1-z^2) then 0 else series(g$g z)/4 where g x = 2*x/(1-x^2)
 		n = toInteger $ p+1
 		make x s k t pp qq | k>n = pp/qq
 			| odd k = make x (-s) (k+1) (t*x) (pp+y) qq
