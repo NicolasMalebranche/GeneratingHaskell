@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, FlexibleInstances #-}
 
 -- Modul für p-adische Zahlen
 module PAdic where
@@ -14,7 +14,7 @@ type Digit = Int
 -- p, als globale Variable. Voreinstellung ist 2
 {-# NOINLINE pRef #-}
 pRef :: IORef Digit
-pRef = unsafePerformIO $ newIORef 2
+pRef = unsafePerformIO $ newIORef 11
 p = unsafePerformIO $ readIORef pRef
 pp _ = fromIntegral p
 
@@ -59,7 +59,9 @@ shiftZ_p k = if k < 0 then left k else right k where
 	left k (Z_p _ r) = if k== -1 then r else left (k+1) r
 
 -- Multipliziert eine Z_p Zahl mit einem Skalar s
-multZ_p s = c 0 where c u (Z_p a r) = Z_p m $ c d r where (d,m) = divMod (s*a+u) p
+multZ_p s = c 0 where 
+	c u (Z_p a r) = Z_p (fromIntegral m) $ c d r where 
+		(d,m) = divMod (s*fromIntegral a+u) (pp())
 
 -- Inverses einer ganzen Zahl in Z_p
 invZ_p a = d 1 where
@@ -196,6 +198,15 @@ inLogSeriesQ_p coeffs rx = if o<1 then error "series not convergent" else e wher
 		(z,rem) = orderRem_p n
 		si = if rn == 1 then o-1 else o where (_,rn) = orderRem_p n
 
+-- Setzt eine Q_p-Zahl in eine log-artige Reihe ein. Coeffs sind Z_p-Zahlen
+inASeriesQ_p coeffs rx = if o<1 then error "series not convergent" else e where
+	Q_p o r = cleanQ_p rx
+	e = cleanQ_p $ Q_p o $ f 1 0 r coeffs
+	f n sh rp (c:co) = summand + shiftZ_p si (f (n+1) (sh+o-si) (rp*r) co) where
+		summand = shiftZ_p (sh-z) $ c* rp * invZ_p rem
+		(z,rem) = orderRem_p n
+		si = if rn == 1 then o-1 else o where (_,rn) = orderRem_p n
+
 instance Floating Q_p where
 	pi = 0
 	exp = inExpSeriesQ_p $ repeat 1
@@ -203,6 +214,18 @@ instance Floating Q_p where
 	cos = inExpSeriesQ_p $ cycle [1,0,-1,0]
 	sinh =inExpSeriesQ_p $ cycle [0,1,0,1]
 	cosh =inExpSeriesQ_p $ cycle [1,0,1,0]
+	asinh = if p == 2 then asinhLog else a.cleanQ_p where
+		a z@(Q_p o _) | o > 0 = asinhSmall z
+			| o < 0 = asinhLarge z
+			| otherwise = asinhLog z
+		asinhSmall = inASeriesQ_p c where 
+			c = zipWith (\s a -> fromRational (s*a)) (cycle [1,0,-1,0]) acoeffs
+		asinhLarge x = log (2*x) + inASeriesQ_p c (recip x) where 
+			c = zipWith (\s a -> fromRational(s*a)) (cycle [0,1,0,-1]) (tail acoeffs)
+		asinhLog x = log $ x + sqrt(1+x^2)
+		acoeffs = 1:0:zipWith(\x i -> x * (i%(i+1))) acoeffs [1..]
+	asin =inExpSeriesQ_p c where c = 0:1:zipWith(\x i -> x*i^2) c [0..] 
+	acos x = atan (sqrt ((1-x)/(1+x)) )* 2
 	atanh x = log ((1+x)/(1-x)) / 2
 	sqrt (Q_p o r) = cleanQ_p $ Q_p h w where
 		h = (o+1) `div` 2
