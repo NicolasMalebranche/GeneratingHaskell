@@ -209,7 +209,9 @@ instance Floating Q_p where
 		w = sqrtZ_p $ if odd o then Z_p 0 r else r
 	log = l . cleanQ_p where
 		l (Q_p _ r) = inLogSeriesQ_p (cycle [1,-1]) (Q_p 0 (r/signum r) - 1)
-	atan = a . cleanQ_p where
+	atan = if psq then la else a . cleanQ_p where
+		psq = (truncate $ sqrt $ fromIntegral $ p-1)^2 == p-1
+		la = \x -> log ((x-i)/(x+i)) / (2*i) where i = sqrt(-1)
 		series = inLogSeriesQ_p (cycle [1,0,-1,0])
 		half = recip 2
 		f z = cleanQ_p (2*z / (1-z^2))
