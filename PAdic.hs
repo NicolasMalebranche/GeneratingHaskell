@@ -76,6 +76,9 @@ invZ_p a = d 1 where
 	a' = invMod_p a ; pp = p()
 	d c = Z_p (fromIntegral t) $ d $ div (c-a*t) pp where t = mod (c*a') pp
 
+-- Schneidet (max. 8) führende Nullen ab
+estimateOrderZ_p = e 0 where e i z@(Z_p a r) = if i>7 || a/=0 then (i,z) else e (i+1) r
+
 instance Num Z_p where
 	fromInteger i = Z_p m $ fromInteger d  where (d,m)= divMod_p i
 	(+) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod_p (u+a+b)
@@ -90,6 +93,7 @@ instance Num Z_p where
 		facc (Z_p b rb) = afst*b
 
 instance Fractional Z_p where
+	Z_p 0 rC / Z_p 0 rA = rC/rA
 	Z_p c rC / Z_p a rA = bb where
 		a' = invMod_p a
 		d c = Z_p t $ d $ div_p (c-a*t) where t = mod_p(c*a')
@@ -102,18 +106,57 @@ instance Fractional Z_p where
 		d c = Z_p (fromIntegral b) $ d $ div_p (c-a*b) where 
 			b = mod (c*a') $ p()
 
--- Quadratwurzel
-sqrtZ_p x= if p()==2 then sq2 x else sqp x where
-	sq2 (Z_p 0 (Z_p 0 x)) = Z_p 0 $ sq2 x
-	sq2 (Z_p 1 (Z_p 0 (Z_p 0 (Z_p x0 x1)))) = w where
-		y0 = if odd x0 then 1 else 0
-		y1 = if y0 == 0 then Z_p 0 (x1-y1^2) else Z_p 0 (x1-y1^2-y1)
-		w = Z_p 1 $ Z_p y0 y1
-	sq2 _ = error "admits no sqare root"
-	sqp (Z_p 0 (Z_p 0 x)) = Z_p 0 $ sqp x
-	sqp (Z_p b x) = Z_p a w where
-		a = sqrtMod_p b 
-		w =  invZ_p (2*a) * (x - Z_p (div_p (a^2-b)) (w^2))
+-- Setzt p^o * r, r eine Z_p-Zahl in eine exp-artige Reihe ein
+inExpSeriesZ_p coeffs (o,r) = if (p()-1)*o<=1 then error "series not convergent" else f 1 0 1 coeffs where
+	f n sh rp (c:co) = summand + shiftZ_p si (invZ_p rem *f (n+1)(sh+ds)(rp*r) co) where
+		summand = shiftZ_p sh $ multZ_p c rp
+		(z,rem) = orderRem_p n
+		si = if n `mod` (p()-1) == 0 then o-1 else o
+		ds = o-si-z
+		
+-- Setzt p^o * r, r eine Z_p-Zahl in eine log-artige Reihe ein
+inLogSeriesZ_p coeffs (o,r) = if o<1 then error "series not convergent" else shiftZ_p o $f 1 0 r coeffs where
+	f n sh rp (c:co) = summand + shiftZ_p si (f (n+1) (sh+o-si) (rp*r) co) where
+		summand = shiftZ_p (sh-z) $ multZ_p c rp * invZ_p rem
+		(z,rem) = orderRem_p n
+		si = if rn == 1 then o-1 else o where (_,rn) = orderRem_p n
+
+-- Achtung: für Werte, wo die Funktionen nicht definiert sind, terminieren sie evtl. nicht
+instance Floating Z_p where
+	pi = 0
+	exp = inExpSeriesZ_p (repeat (1::Digit)) . estimateOrderZ_p
+	sin = inExpSeriesZ_p (cycle [0,1,0,-1::Digit]) . estimateOrderZ_p
+	cos = inExpSeriesZ_p (cycle [1,0,-1,0::Digit]) . estimateOrderZ_p
+	sinh = inExpSeriesZ_p (cycle [0,1::Digit]) . estimateOrderZ_p
+	cosh = inExpSeriesZ_p (cycle [1,0::Digit]) . estimateOrderZ_p
+	asinh x = log $ x + sqrt(x^2+1)
+	acosh x = log $ x + sqrt(x^2-1)
+	atanh x = log ((1+x)/(1-x)) / 2
+	asin x = pi/2 - acos x
+	acos x = multZ_p 2 $ atan (sqrt ((1-x)/(1+x)) )
+	log = l.f where
+		f (Z_p 0 r) = f r; f r = r
+		l x = inLogSeriesZ_p (cycle [1,-1::Digit])$ estimateOrderZ_p $ x/signum x - 1
+	sqrt x= if p()==2 then sq2 x else sqp x where
+		sq2 (Z_p 0 (Z_p 0 x)) = Z_p 0 $ sq2 x
+		sq2 (Z_p 1 (Z_p 0 (Z_p 0 (Z_p x0 x1)))) = w where
+			y0 = if odd x0 then 1 else 0
+			y1 = if y0 == 0 then Z_p 0 (x1-y1^2) else Z_p 0 (x1-y1^2-y1)
+			w = Z_p 1 $ Z_p y0 y1
+		sq2 _ = error "admits no sqare root"
+		sqp (Z_p 0 (Z_p 0 x)) = Z_p 0 $ sqp x
+		sqp (Z_p b x) = Z_p a w where
+			a = sqrtMod_p b 
+			w =  invZ_p (2*a) * (x - Z_p (div_p (a^2-b)) (w^2))
+	atan x = if p() `mod` 4 == 1 then la x else a x where
+		la = \x -> log ((x-i)/(x+i)) / (2*i) where i = sqrt(-1)
+		a x@(Z_p 0 _) = series x
+		a x =  series (make x 1 0 1 0 0) / fromIntegral n
+		series = inLogSeriesZ_p (cycle [1,0,-1,0::Digit]) . estimateOrderZ_p
+		n = if p()==2 then 4 else p()+1 :: Integer
+		make x s k t pp qq | k>n = pp/qq
+			| odd k = make x (-s) (k+1) (t*x) (pp+y) qq
+			| True = make x s (k+1) (t*x) pp (qq+y) where y = t*fromIntegral(s*choose n k)
 
 -- p-1. Einheitswurzeln mit gegebener erster Ziffer a /= 0
 rtUnityZ_p a' = Z_p a w where
@@ -221,7 +264,7 @@ instance Floating Q_p where
 	acos x = atan (sqrt ((1-x)/(1+x)) )* 2
 	sqrt (Q_p o r) = cleanQ_p $ Q_p h w where
 		h = (o+1) `div` 2
-		w = sqrtZ_p $ if odd o then Z_p 0 r else r
+		w = sqrt $ if odd o then Z_p 0 r else r
 	log = l . cleanQ_p where
 		l (Q_p _ r) = inLogSeriesQ_p (cycle [1,-1]) (Q_p 0 (r/signum r) - 1)
 	atan x = if mod (p()-1) 4 == 0 then la x else if p()==2 then a2$cleanQ_p x else a$cleanQ_p x where
