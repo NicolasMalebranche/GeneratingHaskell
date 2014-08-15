@@ -69,7 +69,7 @@ shiftZ_p k = if k < 0 then left k else right k where
 	left k (Z_p _ r) = if k== -1 then r else left (k+1) r
 
 -- Multipliziert eine Z_p Zahl mit einem Skalar s
-multZ_p s = c 0 where c u (Z_p a r) = Z_p m $ c d r where (d,m) = divMod_p $ s*a+u
+multZ_p s = c 0 where c u (Z_p a r) = Z_p m$c d r where (d,m)=divMod_p$ s*fromIntegral a+u
 
 -- Inverses einer ganzen Zahl in Z_p
 invZ_p a = d 1 where
@@ -224,7 +224,7 @@ instance Floating Q_p where
 		w = sqrtZ_p $ if odd o then Z_p 0 r else r
 	log = l . cleanQ_p where
 		l (Q_p _ r) = inLogSeriesQ_p (cycle [1,-1]) (Q_p 0 (r/signum r) - 1)
-	atan = if mod (p()-1) 4 == 0 then la else if p()==2 then a2.cleanQ_p else a.cleanQ_p where
+	atan x = if mod (p()-1) 4 == 0 then la x else if p()==2 then a2$cleanQ_p x else a$cleanQ_p x where
 		la = \x -> log ((x-i)/(x+i)) / (2*i) where i = sqrt(-1)
 		series = inLogSeriesQ_p (cycle [1,0,-1,0])
 		a z@(Q_p o r)
