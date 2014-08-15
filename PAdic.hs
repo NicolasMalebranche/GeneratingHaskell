@@ -130,7 +130,7 @@ newtonZ_p f f' a = Z_p a' $ t 1 a where
 		y = x - f x / f' x
 
 instance Show Z_p where
-	show r = if p() > 10 then it else sch where
+	show r = if p() > 31 then it else sch where
 		maxIts = 5
 		it = "[.." ++ tail(show $ reverse $ take maxIts $ f 1 0 r )
 		f i acc (Z_p a r) = na : f (i*p()) na r where na = i*a+acc
@@ -139,7 +139,8 @@ instance Show Z_p where
 		w "0" = "..0"
 		w ('0':r) = w r
 		w r = ".."++r
-		ps i (Z_p x r) a = if i > maxDigits then a else ps (i+1) r (show x ++a)
+		sh i r = ((['0'..'9'] ++ ['a'..'z']) !! i) : r
+		ps i (Z_p x r) a = if i > maxDigits then a else ps (i+1) r (sh x a)
 
 -----------------------------------------------------------------------------------------
 
@@ -233,7 +234,7 @@ instance Floating Q_p where
 			| True = make x s (k+1) (t*x) pp (qq+y) where y = t*fromIntegral(s*choose n k)
 
 instance Show Q_p where
-	show (Q_p o r) = if p() > 10 then it else sch where
+	show (Q_p o r) = if p() > 31 then it else sch where
 		maxIts = 5
 		it = "[.." ++ tail(show $ reverse $ take maxIts $ f (1%p()^o) 0 r )
 		f i acc (Z_p a r) = na : f (i*p()) na r where na = i*fromIntegral a+acc
@@ -243,4 +244,5 @@ instance Show Q_p where
 		w ('0':'.':r) = "..0."++r
 		w ('0':r) = w r
 		w r = ".."++r
-		ps i (Z_p x r) a = if i > maxDigits then a else ps (i+1) r (show x ++(if i==0 then "." else"")++a)
+		sh i r = ((['0'..'9'] ++ ['a'..'z']) !! i) : r
+		ps i (Z_p x r) a = if i > maxDigits then a else ps (i+1) r (sh x $(if i==0 then "." else"")++a)
