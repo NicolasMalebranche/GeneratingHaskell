@@ -15,8 +15,15 @@ type Digit = Int
 {-# NOINLINE pRef #-}
 pRef :: IORef Digit
 pRef = unsafePerformIO $ newIORef 2
-p = unsafePerformIO $ readIORef pRef
-pp _ = fromIntegral p
+p _ = fromIntegral $ unsafePerformIO $ readIORef pRef
+-----------------------------------------------------------------------------------------
+
+-- Division mit Rest modulo p
+divMod_p :: Integral a => a -> (a,Digit)
+divMod_p k = (d,fromIntegral m) where (d,m) = divMod k $ p()
+
+div_p k = k `div` p()
+mod_p k = fromIntegral $ k `mod`  p() :: Digit
 
 -----------------------------------------------------------------------------------------
 
@@ -24,7 +31,7 @@ pp _ = fromIntegral p
 data Z_p = Z_p Digit Z_p
 
 -- Übertrag 
-carry_p = c 0 where c a (Z_p i r) = Z_p m $ c d r where (d,m) = divMod (a+i) p
+carry_p = c 0 where c a (Z_p i r) = Z_p m $ c d r where (d,m) = divMod_p (a+i) 
 
 -- Erweiterter Euklidischer Algorithmus
 euclid 0 b = (b, (0, 1))
@@ -35,23 +42,22 @@ euclid a b = (gcd, (y - x*d, x)) where
 -- Zählt p-Potenzen in einer Zahl
 -- Achtung! Terminiert nicht, wenn 0 eingegeben wird
 order_p i = if m==0 then 1+order_p d else 0 where 
-	(d,m) = divMod i $ pp()
+	(d,m) = divMod_p i
 
 -- orderRem_p n = (o,r) wobei n==(p^o)*r und o maximal
 -- Achtung! Terminiert nicht, wenn 0 eingegeben wird
 orderRem_p :: (Integral i,Integral j) => i -> (j,i)
-orderRem_p = c 0 where 
-	c o n = if m==0 then c (o+1) d else (o,n) where (d,m) = divMod n $ pp()
+orderRem_p = c 0 where c o n = if m==0 then c (o+1) d else (o,n) where (d,m) = divMod_p n
 
 -- Inverses modulo p
-invMod_p n = if gcd == 1 then mod x p else error $"division by "++show n++" mod "++show p where
-	(gcd,(x,_)) = euclid nn p
-	nn = fromIntegral $ mod n $ pp ()
+invMod_p n = if gcd == 1 then mod_p x else error $"not invertible mod "++show (p()) where
+		(gcd,(x,_)) = euclid (mod_p n) $ p() ;
 
 -- Wurzel modulo p, einfach durch Ausprobieren
-sqrtMod_p n = f 0 where
-	f i = if mod(i^2 - n) p == 0 then i else if i<p then f (i+1) else
-		error $ show n++" admits no sqrt mod "++show p
+sqrtMod_p n = f 0 where 
+	pp=p()
+	f i = if mod(i^2 - n) pp == 0 then i else if i<pp then f (i+1) else
+		error $ show n++" admits no sqrt mod "++show pp
 
 -- Multipliziert mit p^k in Z_p. Schneidet Ziffern ab, falls k < 0
 shiftZ_p k = if k < 0 then left k else right k where
@@ -59,17 +65,17 @@ shiftZ_p k = if k < 0 then left k else right k where
 	left k (Z_p _ r) = if k== -1 then r else left (k+1) r
 
 -- Multipliziert eine Z_p Zahl mit einem Skalar s
-multZ_p s = c 0 where c u (Z_p a r) = Z_p m $ c d r where (d,m) = divMod (s*a+u) p
+multZ_p s = c 0 where c u (Z_p a r) = Z_p m $ c d r where (d,m) = divMod_p $ s*a+u
 
 -- Inverses einer ganzen Zahl in Z_p
 invZ_p a = d 1 where
-	a' = invMod_p a
-	d c = Z_p t $ d $ div (c-a*t) p where t = mod (c*a') p
+	a' = invMod_p a ; pp = p()
+	d c = Z_p (fromIntegral t) $ d $ div (c-a*t) pp where t = mod (c*a') pp
 
 instance Num Z_p where
-	fromInteger i = Z_p (fromInteger m) $ fromInteger d  where (d,m)= divMod i $ pp ()
-	(+) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod (u+a+b) p
-	(-) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod (u+a-b) p
+	fromInteger i = Z_p m $ fromInteger d  where (d,m)= divMod_p i
+	(+) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod_p (u+a+b)
+	(-) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod_p (u+a-b)
 	signum (Z_p a r) = if a==0 then 0 else rtUnityZ_p a
 	abs (Z_p a _) = if a==0 then undefined else 1
 	-- Achtung! Es wird nur einmal Übertrag gemacht.
@@ -82,18 +88,18 @@ instance Num Z_p where
 instance Fractional Z_p where
 	Z_p c rC / Z_p a rA = bb where
 		a' = invMod_p a
-		d c = Z_p t $ d $ div (c-a*t) p where t = mod (c*a') p
-		b = mod (c*a') p
-		r = Z_p (div (c-a*b) p) 0
+		d c = Z_p t $ d $ div_p (c-a*t) where t = mod_p(c*a')
+		b = mod_p (c*a')
+		r = Z_p (div_p (c-a*b)) 0
 		bb = Z_p b $ d 1 * (r + rC - rA*bb)
 	fromRational r = d $ numerator r where
 		a = denominator r
 		a' = fromIntegral $ invMod_p a
-		d c = Z_p (fromIntegral b) $ d $ div (c-a*b) $ pp() where 
-			b = mod (c*a') $ pp()
+		d c = Z_p (fromIntegral b) $ d $ div_p (c-a*b) where 
+			b = mod (c*a') $ p()
 
 -- Quadratwurzel
-sqrtZ_p x= if p==2 then sq2 x else sqp x where
+sqrtZ_p x= if p()==2 then sq2 x else sqp x where
 	sq2 (Z_p 0 (Z_p 0 x)) = Z_p 0 $ sq2 x
 	sq2 (Z_p 1 (Z_p 0 (Z_p 0 (Z_p x0 x1)))) = w where
 		y0 = if odd x0 then 1 else 0
@@ -103,16 +109,16 @@ sqrtZ_p x= if p==2 then sq2 x else sqp x where
 	sqp (Z_p 0 (Z_p 0 x)) = Z_p 0 $ sqp x
 	sqp (Z_p b x) = Z_p a w where
 		a = sqrtMod_p b 
-		w =  invZ_p (2*a) * (x - Z_p (div (a^2-b) p) (w^2))
+		w =  invZ_p (2*a) * (x - Z_p (div_p (a^2-b)) (w^2))
 
 -- p-1. Einheitswurzeln mit gegebener erster Ziffer a /= 0
 rtUnityZ_p a' = Z_p a w where
-	a = a' `mod` p
-	Z_p _ c = (1-fromIntegral (toInteger a^(p-1))) / fromIntegral (toInteger a^(p-2))
-	(ai,p1i) = (invZ_p a, invZ_p (p-1))
+	a = mod_p a'
+	Z_p _ c = (1-fromIntegral (toInteger a^(p()-1))) / fromIntegral (toInteger a^(p()-2))
+	(ai,p1i) = (invZ_p a, invZ_p (p()-1))
 	wa = w * ai
-	psum k wp = if k>p-1 then 0 else Z_p 0 (psum (k+1) (wp*wa) ) + 
-		fromIntegral (choose (pp()-1) (toInteger k)) * wp
+	psum k wp = if k>p()-1 then 0 else Z_p 0 (psum (k+1) (wp*wa) ) + 
+		fromIntegral (choose (p()-1) (toInteger k)) * wp
 	w = p1i * (c - Z_p 0 (w*wa*psum 2 1))
 
 -- Wendet Newtonverfahren auf einen Startwert a an. f(a) muß Ordnung mindestens 1 haben.
@@ -124,10 +130,10 @@ newtonZ_p f f' a = Z_p a' $ t 1 a where
 		y = x - f x / f' x
 
 instance Show Z_p where
-	show r = if p > 10 then it else sch where
+	show r = if p() > 10 then it else sch where
 		maxIts = 5
 		it = "[.." ++ tail(show $ reverse $ take maxIts $ f 1 0 r )
-		f i acc (Z_p a r) = na : f (i*p) na r where na = i*a+acc
+		f i acc (Z_p a r) = na : f (i*p()) na r where na = i*a+acc
 		maxDigits = 20
 		sch = w $ ps 0 r ""
 		w "0" = "..0"
@@ -152,9 +158,9 @@ nearZeroQ_p (Q_p o z) = iter o z where
 	iter o _ = False
 
 -- Schneidet führende Nullen ab. Terminiert nach spätestens q_pPrec Schritten.
-cleanQ_p (Q_p o p) = c o p where 
-	c o (Z_p 0 p) = if o>q_pPrec then Q_p q_pPrec p else c (o+1) p
-	c o p = Q_p o p
+cleanQ_p (Q_p o r) = c o r where 
+	c o (Z_p 0 r) = if o>q_pPrec then Q_p q_pPrec r else c (o+1) r
+	c o r = Q_p o r
 
 instance Num Q_p where
 	Q_p o r + Q_p o' r' = if o<=o' then Q_p o (r + shiftZ_p (o'-o) r') else
@@ -178,13 +184,13 @@ instance Fractional Q_p where
 	Q_p o r / qr = Q_p (o-o') (r/r') where Q_p o' r' = cleanQ_p qr
 
 -- Setzt eine Q_p-Zahl in eine exp-artige Reihe ein
-inExpSeriesQ_p coeffs rx = if (p-1)*o<=1 then error "series not convergent" else e where
+inExpSeriesQ_p coeffs rx = if (p()-1)*o<=1 then error "series not convergent" else e where
 	Q_p o r = cleanQ_p rx
 	e = cleanQ_p $ Q_p 0 $ f 1 0 1 coeffs
 	f n sh rp (c:co) = summand + shiftZ_p si (invZ_p rem *f (n+1)(sh+ds)(rp*r) co) where
 		summand = shiftZ_p sh $ multZ_p c rp
 		(z,rem) = orderRem_p n
-		si = if n `mod` (p-1) == 0 then o-1 else o
+		si = if n `mod` (p()-1) == 0 then o-1 else o
 		ds = o-si-z
 
 -- Setzt eine Q_p-Zahl in eine log-artige Reihe ein
@@ -213,24 +219,24 @@ instance Floating Q_p where
 		w = sqrtZ_p $ if odd o then Z_p 0 r else r
 	log = l . cleanQ_p where
 		l (Q_p _ r) = inLogSeriesQ_p (cycle [1,-1]) (Q_p 0 (r/signum r) - 1)
-	atan = if mod (p-1) 4 == 0 then la else if p==2 then a2.cleanQ_p else a.cleanQ_p where
+	atan = if mod (p()-1) 4 == 0 then la else if p()==2 then a2.cleanQ_p else a.cleanQ_p where
 		la = \x -> log ((x-i)/(x+i)) / (2*i) where i = sqrt(-1)
 		series = inLogSeriesQ_p (cycle [1,0,-1,0])
 		a z@(Q_p o r)
 			| o > 0 = series z
 			| o < 0 = - series (recip z)
-			| otherwise = series (make z 1 0 1 0 0) / fromIntegral (p+1)
+			| otherwise = series (make z 1 0 1 0 0) / (p()+1)
 		a2 z = if nearZeroQ_p(1-z^2) then 0 else series(g$g z)/4 where g x = 2*x/(1-x^2)
-		n = toInteger $ p+1
+		n = p()+1 :: Integer
 		make x s k t pp qq | k>n = pp/qq
 			| odd k = make x (-s) (k+1) (t*x) (pp+y) qq
 			| True = make x s (k+1) (t*x) pp (qq+y) where y = t*fromIntegral(s*choose n k)
 
 instance Show Q_p where
-	show (Q_p o r) = if p > 10 then it else sch where
+	show (Q_p o r) = if p() > 10 then it else sch where
 		maxIts = 5
-		it = "[.." ++ tail(show $ reverse $ take maxIts $ f (1%p^o) 0 r )
-		f i acc (Z_p a r) = na : f (i*fromIntegral p) na r where na = i*fromIntegral a+acc
+		it = "[.." ++ tail(show $ reverse $ take maxIts $ f (1%p()^o) 0 r )
+		f i acc (Z_p a r) = na : f (i*p()) na r where na = i*fromIntegral a+acc
 		maxDigits = 20
 		sch = w $ ps o r $ if o>0 then replicate o '0' ++ "." else ""
 		w "0" = "..0"
