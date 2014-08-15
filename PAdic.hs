@@ -3,7 +3,6 @@
 -- Modul für p-adische Zahlen
 module PAdic where
 
-import Math.Combinatorics.Exact.Binomial
 import System.IO.Unsafe
 import Data.IORef
 import Data.Ratio
@@ -24,6 +23,11 @@ divMod_p k = (d,fromIntegral m) where (d,m) = divMod k $ p()
 
 div_p k = k `div` p()
 mod_p k = fromIntegral $ k `mod`  p() :: Digit
+
+-- Binomialkoeffizient
+choose n k = a 1 1 where
+	bd = if n > 2*k then k else n-k
+	a i acc = if i > bd then acc else a (i+1) $ acc*(n-bd+i) `div` i
 
 -----------------------------------------------------------------------------------------
 
