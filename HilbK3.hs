@@ -126,17 +126,28 @@ bai i = (partAsLambda$PartAlpha [i+2], 1:[0::K3Domain,0..])
 b4i i = (partAsLambda$PartAlpha [i,1], 0:1:[0::K3Domain,0..])
 b5i i = (partAsLambda$PartAlpha [i,1], 1:0:[0::K3Domain,0..])
 
-
-writef n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym2.txt") $ showGapMat h4 sh2 m where
+-- Schreibt Multiplikationsmatrix für Produkte mit 2 Faktoren vom Grad 2
+writeSym2 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym2.txt") $ showGapMat h4 sh2 m where
 	m i (j1,j2) = cupIntegral i j1 j2
 	h4 = reverse $ hilbBase n 4 
 	sh2 = sym2$hilbBase n 2
 
-writeSym3 n = writeFile ("OutputSym"++show n++".txt") $ "a := [\n"++s++"\n];" where
-	h4 = reverse $ hilbBase n 4 
-	h6 = reverse $ hilbBase n 6
+-- Schreibt Multiplikationsmatrix für Produkte mit Faktoren von Grad 2 und 4
+-- dro und tak geben Zeilenbereiche an (zum Aufteilen auf meherere Prozesse)
+write24 n dro tak = writeFile ("GAP_Code/GAP_n="++show n++"_24_linesfrom" ++show dro++"_lines"++show tak++".txt") $ showGapMat h6 h24 m where
+	m i (j1,j2) = cupIntegral i j1 j2
+	h2 = hilbBase n 2
+	h4 = hilbBase n 4 
+	h6 = take tak $ drop dro $ hilbBase n 6
+	h24 = [(x,y) | x<-h2, y<-h4]
+
+-- Schreibt Multiplikationsmatrix für Dreifachprodukte mit Faktoren von Grad 2
+-- dro und tak geben Zeilenbereiche an (zum Aufteilen auf meherere Prozesse)
+writeSym3 n dro tak = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_linesfrom" ++show dro++"_lines"++show tak++".txt") $ "a := [\n"++s++"\n];" where
+	h4 = hilbBase n 4 
+	h6 = take tak $ drop dro $  hilbBase n 6
 	s1 = hilbBase n 2
 	s3 = [(i,j,k) | i<-s1, j<- s1, k<- s1, i<=j ,j<= k]
 	cup1= memo2 c where  c i4 (i2,j2) = cupIntegral i4 i2 j2
-	p i6 (i2,j2,k2) = Debug.Trace.trace ("p "++show x++" "++show i6 ++ " "++show(i2,j2,k2)) x where x=sum [cupIntegral i6 i2 i4 * x| i4<-h4, let x= cup1 i4 (i2,j2), x/=0]
+	p i6 (i2,j2,k2) = sum [cupIntegral i6 k2 i4 * x| i4<-h4, let x= cup1 i4 (i2,j2), x/=0]
 	s = concat $ intersperse ",\n" [show [p i6 trip | trip <- s3] | i6 <- h6]
