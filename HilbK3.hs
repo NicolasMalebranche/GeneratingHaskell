@@ -21,6 +21,8 @@ import Debug.Trace
 import Control.Concurrent
 import Control.Monad
 import Control.Concurrent.MVar
+import qualified Data.IntMap as IntMap
+import qualified Math.LinearAlgebra.Sparse.Matrix as Sparse
 
 
 -- CupProdukt auf symmetrisiertem A{S_n}
@@ -153,25 +155,24 @@ writeSym2 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym2.txt") $ showGapMat h4
 
 -- Schreibt Multiplikationsmatrix für Produkte mit Faktoren von Grad 2 und 4
 -- dro und tak geben Zeilenbereiche an (zum Aufteilen auf meherere Prozesse)
-write24 n dro tak = writeFile ("GAP_Code/GAP_n="++show n++"_24_linesfrom" ++show dro++"_lines"++show tak++".txt") $ showGapMat h6 h24 m where
+write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24_WS.txt") $ showGapMat [0..length h6-1] [0..length h24-1] m where
 	m i (j1,j2) = cupIntegral i j1 j2
 	h2 = hilbBase n 2
 	h4 = hilbBase n 4 
-	h6 = take tak $ drop dro $ hilbBase n 6
+	h6 = hilbBase n 6
 	h24 = [(x,y) | x<-h2, y<-h4]
+	csa = toSparse (\a (b,c) -> fromIntegral $ cupSA a b c) h6 h24
+	cri = toSparse (fromIntegral.creationInteger) h6 h6
+	icr = toSparse (\(a2,a4) (b2,b4) -> integerCreation a2 b2 * integerCreation a4 b4) h24 h24
+	res = cri `Sparse.mul` csa `Sparse.mul` icr
+	m i j = (Sparse.#) res (i,j)
 
-myn = 4
-sym3 = f where
-	h4 = hilbBase myn 4 
-	h6 = hilbBase myn 6
-	ci = memo3 cupIntegral
-	f (i,j,k) = [(r,x6) | x6 <- h6, let r = cupIntegral3 x6 i j k, r/=0]
+toSparse f rows cols = Sparse.SM (length rows, length cols) mx where
+	mx = IntMap.fromList [(i,g r) | i <- [0..], r<-rows]
+	g r = IntMap.fromList [(j, x) | (j,c) <- zip [0..] cols, let x = f r c, x/=0]
 
-s3 = [(i,j,k) | i<-h2, j<- h2, k<- h2, i<=j ,j<= k] where h2 = hilbBase myn 2
 
-testSym (i,j,k) = x == sym3 (j,k,i) && x == sym3 (k,i,j) where x = sym3 (i,j,k)
-
-writeSym3 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_Part14.txt") s where
+writeSym3 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_.txt") s where
 	s = concat $ intersperse ",\n" $ map (show.cup3) range 
 	range = drop 2178 s3 --s3 
 	h4 = hilbBase n 4
