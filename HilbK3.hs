@@ -18,6 +18,10 @@ import ShowMatrix
 import SymmetricFunctions
 import Data.Ratio
 import Debug.Trace
+import Control.Concurrent
+import Control.Monad
+import Control.Concurrent.MVar
+
 
 -- CupProdukt auf symmetrisiertem A{S_n}
 --cupSA :: (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> K3Domain
@@ -103,6 +107,21 @@ cupIntegral (pc,lc) (pa,la) (pb,lb) = numerator res where
 		co = map ((\(a,b)->(PartLambda a,b)).unzip.Data.List.sortBy (flip compare).concat) $ combinations $ map allIn [0..23]
 		allIn a = [ [(i,a)|i<-l]| PartLambda l<-map partAsLambda $ partOfWeight $ partWeight $ subpart (px,lx) a ]
 
+cupIntegral3 = f where
+ csa = memo3 cupSA
+ f  (pc,lc) (pa,la) (pb,lb) (p0,l0)= numerator res where
+	tripBase = [(x,y,z) | x<-filter (\a->integerCreation a (pa,la)/=0) ( nonZero(pa,la)) , 
+		y <- filter (\a->integerCreation a (pb,lb)/=0)(nonZero(pb,lb)),
+		z <- filter (\a->integerCreation a (p0,l0)/=0)(nonZero(p0,l0)) ]
+	singBase = filter (\a->creationInteger (pc,lc) a/=0) $ nonZero(pc,lc)
+	ci (x,y,z) (a,b,q) = integerCreation x a * integerCreation y b * integerCreation z q
+	ch c (x,y,z) = sum [cupSA c x run * a | run <- hilbBase n d, let a = csa run y z, a/=0]
+	n = partWeight pc
+	d = degHilbK3 (pb,lb) + degHilbK3 (p0,l0)
+	res = sum[creationInteger (pc,lc) sb * ch sb tri  * ci tri ((pa,la),(pb,lb),(p0,l0)) | sb <- singBase,tri <- tripBase]
+	nonZero (px,lx) =  co where
+		co = map ((\(a,b)->(PartLambda a,b)).unzip.Data.List.sortBy (flip compare).concat) $ combinations $ map allIn [0..23]
+		allIn a = [ [(i,a)|i<-l]| PartLambda l<-map partAsLambda $ partOfWeight $ partWeight $ subpart (px,lx) a ]
 
 -- Hilfsfunktion: Filtert Erzeugerkompositionen
 subpart (PartLambda pl,l) a = PartLambda $ sb pl l where
@@ -141,13 +160,31 @@ write24 n dro tak = writeFile ("GAP_Code/GAP_n="++show n++"_24_linesfrom" ++show
 	h6 = take tak $ drop dro $ hilbBase n 6
 	h24 = [(x,y) | x<-h2, y<-h4]
 
--- Schreibt Multiplikationsmatrix für Dreifachprodukte mit Faktoren von Grad 2
--- dro und tak geben Zeilenbereiche an (zum Aufteilen auf meherere Prozesse)
-writeSym3 n dro tak = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_linesfrom" ++show dro++"_lines"++show tak++".txt") $ "a := [\n"++s++"\n];" where
-	h4 = hilbBase n 4 
-	h6 = take tak $ drop dro $  hilbBase n 6
-	s1 = hilbBase n 2
-	s3 = [(i,j,k) | i<-s1, j<- s1, k<- s1, i<=j ,j<= k]
-	cup1= memo2 c where  c i4 (i2,j2) = cupIntegral i4 i2 j2
-	p i6 (i2,j2,k2) = sum [cupIntegral i6 k2 i4 * x| i4<-h4, let x= cup1 i4 (i2,j2), x/=0]
-	s = concat $ intersperse ",\n" [show [p i6 trip | trip <- s3] | i6 <- h6]
+myn = 4
+sym3 = f where
+	h4 = hilbBase myn 4 
+	h6 = hilbBase myn 6
+	ci = memo3 cupIntegral
+	f (i,j,k) = [(r,x6) | x6 <- h6, let r = cupIntegral3 x6 i j k, r/=0]
+
+s3 = [(i,j,k) | i<-h2, j<- h2, k<- h2, i<=j ,j<= k] where h2 = hilbBase myn 2
+
+testSym (i,j,k) = x == sym3 (j,k,i) && x == sym3 (k,i,j) where x = sym3 (i,j,k)
+
+writeSym3 n = do 
+ done <- newEmptyMVar
+ mapM_ (forkIO . writ done) range
+ takeMVar done where
+	block = (length s3 `div` 4) + 1
+	range = ran 1 s3 where ran i x = if x == [] then [] else (i,take block x) : ran (i+1) (drop block x)
+	h4 = hilbBase n 4
+	h6 = hilbBase n 6
+	h2 = hilbBase n 2
+	s3 = [(i,j,k) | i<-h2, j<- h2, k<- h2, i<=j ,j<= k]
+	ci = memo3 cupIntegral
+	cup3 (i,j,k) = [cupIntegral3 x6 i j k| x6 <- h6] 
+	writ done (num,syms) = do
+	  writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_Part" ++show num++".txt") s 
+	  putMVar done () where
+	  	s = concat $ intersperse ",\n" $ map (show.cup3) syms 
+
