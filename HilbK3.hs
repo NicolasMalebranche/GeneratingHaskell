@@ -160,8 +160,8 @@ write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24_WS.txt") $ showGapMat [0.
 	h4 = hilbBase n 4 
 	h6 = hilbBase n 6
 	h24 = [(x,y) | x<-h2, y<-h4]
-	csa = toSparse (\a (b,c) -> fromIntegral $ cupSA a b c) h6 h24
-	cri = toSparse (fromIntegral.creationInteger) h6 h6
+	csa = toSparse (\a (b,c) -> cupSA a b c) h6 h24
+	cri = toSparse (\ i j -> fromIntegral (creationInteger i j)) h6 h6
 	icr = toSparse (\(a2,a4) (b2,b4) -> integerCreation a2 b2 * integerCreation a4 b4) h24 h24
 	res = cri `Sparse.mul` csa `Sparse.mul` icr
 	m i j = (Sparse.#) res (i,j)
