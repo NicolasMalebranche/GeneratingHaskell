@@ -171,20 +171,14 @@ s3 = [(i,j,k) | i<-h2, j<- h2, k<- h2, i<=j ,j<= k] where h2 = hilbBase myn 2
 
 testSym (i,j,k) = x == sym3 (j,k,i) && x == sym3 (k,i,j) where x = sym3 (i,j,k)
 
-writeSym3 n = do 
- done <- newEmptyMVar
- mapM_ (forkIO . writ done) range
- takeMVar done where
-	block = (length s3 `div` 4) + 1
-	range = ran 1 s3 where ran i x = if x == [] then [] else (i,take block x) : ran (i+1) (drop block x)
+writeSym3 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_Part14.txt") s where
+	s = concat $ intersperse ",\n" $ map (show.cup3) range 
+	range = drop 2178 s3 --s3 
 	h4 = hilbBase n 4
 	h6 = hilbBase n 6
 	h2 = hilbBase n 2
 	s3 = [(i,j,k) | i<-h2, j<- h2, k<- h2, i<=j ,j<= k]
 	ci = memo3 cupIntegral
 	cup3 (i,j,k) = [cupIntegral3 x6 i j k| x6 <- h6] 
-	writ done (num,syms) = do
-	  writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_Part" ++show num++".txt") s 
-	  putMVar done () where
-	  	s = concat $ intersperse ",\n" $ map (show.cup3) syms 
+
 
