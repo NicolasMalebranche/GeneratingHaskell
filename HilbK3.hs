@@ -156,7 +156,6 @@ writeSym2 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym2.txt") $ showGapMat h4
 -- Schreibt Multiplikationsmatrix für Produkte mit Faktoren von Grad 2 und 4
 -- dro und tak geben Zeilenbereiche an (zum Aufteilen auf meherere Prozesse)
 write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24_WS.txt") $ showGapMat [0..length h6-1] [0..length h24-1] m where
-	m i (j1,j2) = cupIntegral i j1 j2
 	h2 = hilbBase n 2
 	h4 = hilbBase n 4 
 	h6 = hilbBase n 6
