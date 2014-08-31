@@ -171,14 +171,17 @@ toSparse f rows cols = Sparse.SM (length rows, length cols) mx where
 	g r = IntMap.fromList [(j, x) | (j,c) <- zip [0..] cols, let x = f r c, x/=0]
 
 
-writeSym3 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_.txt") s where
+writeSym3 n dro tak = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_" ++show dro++".txt") s where
 	s = concat $ intersperse ",\n" $ map (show.cup3) range 
-	range = drop 2178 s3 --s3 
+	range = take tak $ drop dro h6
 	h4 = hilbBase n 4
 	h6 = hilbBase n 6
 	h2 = hilbBase n 2
+	s22 = [(i,j) | i<-h2, j<-h2, i<=j]
+	cup4 = memo2 c4 where c4 x4 (i,j) =  sum [cupSA x4 ii jj * a * b | ii<-h2, let a = ic ii i, a/=0, jj<-h2, let b = ic jj j, b/=0 ]
+	ic = memo2 integerCreation
 	s3 = [(i,j,k) | i<-h2, j<- h2, k<- h2, i<=j ,j<= k]
-	ci = memo3 cupIntegral
-	cup3 (i,j,k) = [cupIntegral3 x6 i j k| x6 <- h6] 
+	cup3 y6 = [ numerator $ sum[cc * cupSA x6 x4 k * xx |  x4<-h4,let xx = cup4 x4 (i,j), xx/=0 ,x6<-h6, let cc = fromIntegral (creationInteger y6 x6) , cc/=0] | (i,j,k) <- s3] 
+		
 
 
