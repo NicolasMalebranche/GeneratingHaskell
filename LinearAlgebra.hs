@@ -44,3 +44,23 @@ printv vs v = putStrLn $ showv vs v
 
 -- Zeigt Matrix an
 printM vs1 vs2 m = putStrLn $ showM vs1 vs2 m
+
+-- Wandet Matrix (als Funktion ihrer Indizes) in Sparse Matrix um
+toSparse m cols = sm where
+	sm = memo sm'
+	sm' r = [(c, x) | c<-cols, let x=m r c, x/=0]
+
+-- Multipliziert Sparse Matrix von links an eine normale Matrix.
+-- Ergebnis ist eine normale Matrix
+sparseMul sm m i j = s 0 (sm i) where
+	s acc [] = acc
+	s acc ((k,x):r) = s (acc + x*m k j) r
+
+-- Multipliziert Sparse Matrix mit Transponiertem von einer Sparse Matrix.
+-- Ergebnis ist eine normale Matrix
+sparseMulTrans left right i j = s 0 (left i) (right j) where
+	s acc [] _ = acc
+	s acc _ [] = acc
+	s acc v@((i,x):xr) w@((j,y):yr) | i==j = s (acc+x*y) xr yr
+		| i < j = s acc xr w
+		| otherwise = s acc v yr
