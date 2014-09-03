@@ -165,23 +165,25 @@ write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24_WS.txt") $ showGapMat [0.
 	icr = toSparse (\(a2,a4) (b2,b4) -> integerCreation a2 b2 * integerCreation a4 b4) h24 h24
 	res = cri `Sparse.mul` csa `Sparse.mul` icr
 	m i j = (Sparse.#) res (i,j)
+	toSparse f rows cols = Sparse.SM (length rows, length cols) mx where
+		mx = IntMap.fromAscList [(i,g r) | i <- [0..], r<-rows]
+		g r = IntMap.fromAscList [(j, x) | (j,c) <- zip [0..] cols, let x = f r c, x/=0]
 
-toSparse f rows cols = Sparse.SM (length rows, length cols) mx where
-	mx = IntMap.fromList [(i,g r) | i <- [0..], r<-rows]
-	g r = IntMap.fromList [(j, x) | (j,c) <- zip [0..] cols, let x = f r c, x/=0]
 
-
-writeSym3 n dro tak = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3_" ++show dro++".txt") s where
-	s = concat $ intersperse ",\n" $ map (show.cup3) range 
-	range = take tak $ drop dro h6
+writeSym3 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3.txt") s where
+	s = showGapMat h6 h222 cup3
 	h4 = hilbBase n 4
 	h6 = hilbBase n 6
 	h2 = hilbBase n 2
-	s22 = [(i,j) | i<-h2, j<-h2, i<=j]
-	cup4 = memo2 c4 where c4 x4 (i,j) =  sum [cupSA x4 ii jj * a * b | ii<-h2, let a = ic ii i, a/=0, jj<-h2, let b = ic jj j, b/=0 ]
+	h22 = [(i,j)| i<-h2, j<-h2, i<=j]
+	h222 = [(i,j,k) | (i,j) <-h22, k<-h2, j<=k]
+	sac = LinearAlgebra.toSparse (\(j,k) i -> cupSA i j k) h6
+	ci = LinearAlgebra.toSparse creationInteger h6
+	cicsa = ci `LinearAlgebra.sparseMulTrans` sac
 	ic = memo2 integerCreation
-	s3 = [(i,j,k) | i<-h2, j<- h2, k<- h2, i<=j ,j<= k]
-	cup3 y6 = [ numerator $ sum[cc * cupSA x6 x4 k * xx |  x4<-h4,let xx = cup4 x4 (i,j), xx/=0 ,x6<-h6, let cc = fromIntegral (creationInteger y6 x6) , cc/=0] | (i,j,k) <- s3] 
-		
+	csa = LinearAlgebra.toSparse (\i (j,k) -> cupSA i j k) h22
+	csacici = csa `LinearAlgebra.sparseMul` (\(i,j) (ii,jj) -> ic i ii * ic j jj)
+	toInt q = if n ==1 then z else error "Not integral" where (z,n) =(numerator q, denominator q)
+	cup3 y6 (i,j,k) = toInt$sum [cicsa y6 (x4,x2) * v * w| x2<-h2, let v = ic x2 k, v/=0, x4<-h4, let w =csacici x4 (i,j), w/=0]
 
 

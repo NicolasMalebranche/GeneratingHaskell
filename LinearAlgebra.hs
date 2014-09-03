@@ -56,6 +56,12 @@ sparseMul sm m i j = s 0 (sm i) where
 	s acc [] = acc
 	s acc ((k,x):r) = s (acc + x*m k j) r
 
+-- Multipliziert Matrix von links mit Transponiertem von einer Sparse Matrix
+-- Ergebnis ist eine normale Matrix
+mulSparse m sm i j = s 0 (sm j) where
+	s acc [] = acc
+	s acc ((k,x):r) = s (acc + m i k*x) r
+
 -- Multipliziert Sparse Matrix mit Transponiertem von einer Sparse Matrix.
 -- Ergebnis ist eine normale Matrix
 sparseMulTrans left right i j = s 0 (left i) (right j) where
