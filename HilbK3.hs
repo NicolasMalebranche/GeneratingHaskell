@@ -98,7 +98,7 @@ hilbOperators = memo2 hb where
 -- Baut die Indizes des symmetrischen Produkts
 sym2 vs = concat [map (\v2-> (v1,v2)) (drop i vs) | v1<-vs| i<-[0..]]
 
-cupIntegral (pc,lc) (pa,la) (pb,lb) = numerator res where
+cupIntegral (pc,lc) (pa,la) (pb,lb) = toInt res where
 	doubBase = [(x,y) | x<-filter (\a->integerCreation a (pa,la)/=0) ( nonZero(pa,la)) , 
 		y <- filter (\a->integerCreation a (pb,lb)/=0)(nonZero(pb,lb))  ]
 	singBase = filter (\a->creationInteger (pc,lc) a/=0) $ nonZero(pc,lc)
@@ -111,7 +111,7 @@ cupIntegral (pc,lc) (pa,la) (pb,lb) = numerator res where
 
 cupIntegral3 = f where
  csa = memo3 cupSA
- f  (pc,lc) (pa,la) (pb,lb) (p0,l0)= numerator res where
+ f  (pc,lc) (pa,la) (pb,lb) (p0,l0)= toInt res where
 	tripBase = [(x,y,z) | x<-filter (\a->integerCreation a (pa,la)/=0) ( nonZero(pa,la)) , 
 		y <- filter (\a->integerCreation a (pb,lb)/=0)(nonZero(pb,lb)),
 		z <- filter (\a->integerCreation a (p0,l0)/=0)(nonZero(p0,l0)) ]
@@ -124,6 +124,15 @@ cupIntegral3 = f where
 	nonZero (px,lx) =  co where
 		co = map ((\(a,b)->(PartLambda a,b)).unzip.Data.List.sortBy (flip compare).concat) $ combinations $ map allIn [0..23]
 		allIn a = [ [(i,a)|i<-l]| PartLambda l<-map partAsLambda $ partOfWeight $ partWeight $ subpart (px,lx) a ]
+
+-- Ergibt Liste mit Nicht-Null Elementen
+cupSAsp n deg = cl where
+	base = hilbBase n deg
+	cl ((pa,la),(pb,lb)) = [((pc,lc),x) | (pc,lc) <- base, check pc pa pb lc la lb, let x = cupSA (pc,lc) (pa,la) (pb,lb), x/=0]
+	check (PartLambda c) (PartLambda a) (PartLambda b) lc la lb = u && v  where
+		ac = all(==1) c; aa = all(==1) a; ab=all(==1) b
+		u = if ac then a==b else if ab then a==c  else if aa then b==c else True
+		v = if ab && aa && all (/=23) lc then take n (Data.List.sortBy(flip compare)(la++lb))==lc else True
 
 -- Hilfsfunktion: Filtert Erzeugerkompositionen
 subpart (PartLambda pl,l) a = PartLambda $ sb pl l where
@@ -155,35 +164,30 @@ writeSym2 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym2.txt") $ showGapMat h4
 
 -- Schreibt Multiplikationsmatrix für Produkte mit Faktoren von Grad 2 und 4
 -- dro und tak geben Zeilenbereiche an (zum Aufteilen auf meherere Prozesse)
-write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24_WS.txt") $ showGapMat [0..length h6-1] [0..length h24-1] m where
+write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24_Tr.txt")  m where
+	m = "a:= [\n" ++ concat (intersperse",\n"[show$col y2 y4|y2<-h2,y4<-h4] ) ++"\n];;\n"
 	h2 = hilbBase n 2
 	h4 = hilbBase n 4 
 	h6 = hilbBase n 6
-	h24 = [(x,y) | x<-h2, y<-h4]
-	csa = toSparse (\a (b,c) -> cupSA a b c) h6 h24
-	cri = toSparse (\ i j -> fromIntegral (creationInteger i j)) h6 h6
-	icr = toSparse (\(a2,a4) (b2,b4) -> integerCreation a2 b2 * integerCreation a4 b4) h24 h24
-	res = cri `Sparse.mul` csa `Sparse.mul` icr
-	m i j = (Sparse.#) res (i,j)
-	toSparse f rows cols = Sparse.SM (length rows, length cols) mx where
-		mx = IntMap.fromAscList [(i,g r) | i <- [0..], r<-rows]
-		g r = IntMap.fromAscList [(j, x) | (j,c) <- zip [0..] cols, let x = f r c, x/=0]
+	cup = cupSAsp n 6
+	ic = memo2 integerCreation
+	col y2 y4 = [toInt$sum[cri x6 * z | (x6,z)<-genres ] | y6<-h6, let cri = memo integerCreation y6] where 
+		genres = [(x6,z*u*v) |x4<-h4,let u=integerCreation x4 y4,u/=0,x2<-h2, let v = ic x2 y2,v/=0, (x6,z)<-cup (x4,x2)]
 
-
-writeSym3 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3.txt") s where
-	s = showGapMat h6 h222 cup3
+writeSym3 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3Tr.txt") s where
+	s = "a := [\n" ++ concat (intersperse ",\n"[cols x|x<-h22])++"\n];;\n"
 	h4 = hilbBase n 4
 	h6 = hilbBase n 6
 	h2 = hilbBase n 2
 	h22 = [(i,j)| i<-h2, j<-h2, i<=j]
-	h222 = [(i,j,k) | (i,j) <-h22, k<-h2, j<=k]
-	sac = LinearAlgebra.toSparse (\(j,k) i -> cupSA i j k) h6
-	ci = LinearAlgebra.toSparse creationInteger h6
-	cicsa = ci `LinearAlgebra.sparseMulTrans` sac
+	cols (i,j) = concat (intersperse ",\n" [show$map toInt$ col k | k<-h2, j<=k]) where
+		transi = [(ii,jj,u*v) | ii<-h2,let u = ic ii i, u/=0, jj<-h2,let v = ic jj j, v/=0]
+		firstmul = [(x4,z) |x4<-h4, let z=sum[u*mcsa x4 ii jj | (ii,jj,u)<-transi], z/=0 ]
+		rel k = [(x6,u*v*w)|x2<-h2, let u=ic x2 k, u/=0, (x4,v)<-firstmul, (x6,w)<-sacsp(x4,x2)]
+		col k = [sum [z*cri x6|(x6,z)<-rel k] | y6<-h6, let cri = memo (creationInteger y6)] 
+	sumcols = foldr (zipWith (+)) (repeat 0)
+	sacsp = cupSAsp n 6
+	mcsa = memo3 cupSA
 	ic = memo2 integerCreation
-	csa = LinearAlgebra.toSparse (\i (j,k) -> cupSA i j k) h22
-	csacici = csa `LinearAlgebra.sparseMul` (\(i,j) (ii,jj) -> ic i ii * ic j jj)
-	toInt q = if n ==1 then z else error "Not integral" where (z,n) =(numerator q, denominator q)
-	cup3 y6 (i,j,k) = toInt$sum [cicsa y6 (x4,x2) * v * w| x2<-h2, let v = ic x2 k, v/=0, x4<-h4, let w =csacici x4 (i,j), w/=0]
-
+toInt q = if n ==1 then z else 7777777 where (z,n) =(numerator q, denominator q)
 
