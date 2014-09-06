@@ -28,26 +28,31 @@ class (Eq a, HasTrie a) => Partition a where
 		make l (m:r) = l : make (l-m) r
 		make _ [] = []
 		res (PartAlpha r) = partFromLambda $ PartLambda $ make (sum r) r
+	-- Um 1 reduzierte Partition
+	partReduce :: a -> a
 	
 	-- Nächste Partition
 	partSucc :: a -> a
 	
 	-- Leere Partition
 	partEmpty :: a
+	
 	-- Transformation nach Alpha-Schreibweise
 	partAsAlpha :: a -> PartitionAlpha
-	
 	-- Transformation von Alpha-Schreibweise
 	partFromAlpha :: PartitionAlpha -> a
-	
 	-- Transformation nach Lambda-Schreibweise
 	partAsLambda :: a -> PartitionLambda Int
-	
 	-- Transformation von Lambda-Schreibweise
 	partFromLambda :: (Integral i, HasTrie i) => PartitionLambda i -> a
 	
 	-- Alle Permutationen vom entsprechenden Zykeltyp
 	partAllPerms :: a -> [Permute]
+	
+	-- Summe zweier Partitionen
+	partAdd :: a -> a -> a
+	-- Vereinigung zweier Partitionen
+	partUnion :: a -> a -> a
 
 -----------------------------------------------------------------------------------------
 
@@ -55,6 +60,12 @@ class (Eq a, HasTrie a) => Partition a where
 -- (Liste von Muliplizitäten)
 newtype PartitionAlpha = PartAlpha { alphList::[Int] }
 
+-- Normales zipWith aber ohne Abschneiden bei unterschiedlicher Länge
+zipAlpha op (PartAlpha a) (PartAlpha b) = PartAlpha $ z a b where
+	z (x:a) (y:b) = op x y : z a b
+	z [] (y:b) = op 0 y : z [] b
+	z (x:a) [] = op x 0 : z a []
+	z [] [] = []
 
 -- Baut eine Partition aus einer liste
 partition :: [Int] -> PartitionAlpha
@@ -93,6 +104,9 @@ instance Partition PartitionAlpha where
 		augment (a:r) = a+1:r
 		construct _ [] = []
 		construct i l@((j,v):r)= if i==j then v:construct(i+1)r else 0:construct (i+1) l
+	partReduce (PartAlpha (a:r)) = PartAlpha r
+	partAdd = zipAlpha (+)
+	partUnion = zipAlpha max
 
 -- Alle Partitionen eines bestimmten Gewichts, aufsteigend sortiert
 partOfWeight :: Int -> [PartitionAlpha]
@@ -201,6 +215,21 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 			my (a:b:r) = combine $ my $ b:r where
 				combine Nothing = if b==1 then Just $ a+1:r else Just $ a+1:b-1:r
 				combine (Just (c:r)) = if c>a then Just $ c:a:r else Just $a:c:r
+	partReduce (PartLambda l) = PartLambda $ r l where
+		r [] = [] ; r (1:_) = []
+		r (a:l) = (a-1):r l
+	partAdd (PartLambda l) (PartLambda m) = PartLambda $ a l m where
+		a xl@(x:l) ym@(y:m) | x==y = x : y : a l m
+			| x < y = y : a xl m
+			| otherwise = x : a l ym
+		a [] m = m
+		a l [] = l
+	partUnion (PartLambda l) (PartLambda m) = PartLambda $ u l m where
+		u xl@(x:l) ym@(y:m) | x==y = x : u l m
+			| x < y = y : u xl m
+			| otherwise = x : u l ym
+		u [] m = m
+		u l [] = l
 
 instance (Eq i, Num i) => Eq (PartitionLambda i) where
 	PartLambda p == PartLambda q = findEq p q where
