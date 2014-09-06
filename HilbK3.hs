@@ -191,3 +191,23 @@ writeSym3 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3Tr.txt") s where
 	ic = memo2 integerCreation
 toInt q = if n ==1 then z else 7777777 where (z,n) =(numerator q, denominator q)
 
+writeSym3' n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3N.txt") s where
+	h4 = hilbBase n 4
+	h6 = hilbBase n 6
+	h2 = hilbBase n 2
+	h222 = [(i,j,k)| i<-h2, j<-h2, i<=j, k<-h2, j<=k]
+	somme [] [] = []
+	somme a [] = a
+	somme [] b = b
+	somme a@((aa,va):ra) b@((bb,vb):rb) | aa==bb = (aa,va+vb):somme ra rb
+		| aa < bb = (aa,va):somme ra b
+		| otherwise=(bb,vb):somme a rb
+	mult alpha = map (\(a,v)->(a,alpha*v))
+	csaSP = cupSAsp n 6
+	cup3 (n,m,l) = foldr somme [] [mult c2 $ csaSP (l,p) | p<-h4, let c2=cup2 p n m, c2 /= 0]	
+	cup2 = memo3 cupSA
+	ic = memo2 integerCreation
+	base3 (i,j,k) = [((n,m,l),x*y*z)|n<-h2,let x=ic n i,x/=0, m<-h2,let y=ic m j, y/=0, l<-h2, let z=ic l k, z/=0]
+	icup3 ijk = foldr somme [] [mult xyz $ cup3 nml | (nml,xyz)<-base3 ijk ]
+	line (i,j,k) = [toInt$sum [v*creationInteger r q|(q,v)<-icup3(i,j,k)]| r<-h6]
+	s = "a := [\n" ++ concat(intersperse ",\n" [show $line ijk | ijk<-h222]) ++"\n];;\n"
