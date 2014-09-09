@@ -66,16 +66,16 @@ cupSym cList commonOrbits aList bList = product [ sum (x o) | o <- commonOrbits 
 -- Ganzzahlige Basis nach Qin / Wang
 -- integerBase = integerCreation * creation
 -- Achtung: Koffizienten sind nur rational!
-integerCreation  (pc,lc) (pi,li)= if del==0 then 0 else prod / fromIntegral (partZ pc0) where
-	prod = product [powerMonomial (subpart (pi,li) a) (subpart (pc,lc) a) | a<-[1..22]]
+integerCreation (pi,li) (pc,lc) = if del==0 then 0 else prod / fromIntegral (partZ pc0) where
+	prod = product [powerMonomial (subpart (pc,lc) a) (subpart (pi,li) a) | a<-[1..22]]
 	(pc0,pi0) = (subpart (pc,lc) 0 , subpart (pi,li) 0)
 	(pcz,piz) = (subpart (pc,lc) 23, subpart (pi,li)23)
 	del = delta pc0 pi0 * delta pcz piz
 
 -- Ganzzahlige Basis nach Qin / Wang
 -- creation = creationInteger * integerBase
-creationInteger (pi,li) (pc,lc) = if del==0 then 0 else fromIntegral $ prod * partZ pc0 where
-	prod = product [monomialPower (subpart (pc,lc) a) (subpart (pi,li) a) | a<-[1..22]]
+creationInteger (pc,lc) (pi,li) = if del==0 then 0 else fromIntegral $ prod * partZ pc0 where
+	prod = product [monomialPower (subpart (pi,li) a) (subpart (pc,lc) a)  | a<-[1..22]]
 	(pc0,pi0) = (subpart (pc,lc) 0 , subpart (pi,li) 0)
 	(pcz,piz) = (subpart (pc,lc) 23, subpart (pi,li)23)
 	del = delta pc0 pi0 * delta pcz piz
