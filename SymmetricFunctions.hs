@@ -50,12 +50,12 @@ monomialScalarPower moI poI = (s * partZ poI) `div` quo where
 
 -- Basiswechselmatrix von Monomen nach Potenzsummen
 -- !! Achtung !! keine ganzzahligen Koeffizienten
--- power = powerMonomial * monomial
+-- m_j = sum [ p_i * powerMonomial i j | i<-partitions]
 powerMonomial :: (Partition a, Partition b) => a->b->Ratio Int
 powerMonomial poI moI = monomialScalarPower moI poI % partZ poI
 
 -- Basiswechselmatrix von Potenzsummen nach Monomen
--- monomial = monomialPower * power
+-- p_j = sum [m_i * monomialPower i j | i<-partitions]
 monomialPower :: (Partition a, Partition b, Num i) => a->b->i 
 monomialPower lambda mu = fromIntegral $ numerator $ 
 	memoizedMonomialPower (partAsLambda lambda) (partAsLambda mu)  
@@ -64,8 +64,8 @@ memoizedMonomialPower = memo2 mmp1 where
 	mmp2 w l m = invertLowerDiag (map partAsLambda $ partOfWeight w) powerMonomial l m
 
 -- Kostka Zahlen, untere Dreiecksmatrix mit Einsern auf der Diagonale
--- schur = kostka * monomial
--- complete = schur * kostka
+-- s_i = sum [ kostka i j * m_j | j<-partitions]
+-- h_j = sum [ s_i * kostka i j | i<-partitions]
 kostka :: (Partition a, Partition b, Num i) => a->b->i 
 kostka lambda mu = fromIntegral $ memoizedKostka (partAsLambda lambda) (partAsLambda mu)  
 memoizedKostka :: PartitionLambda Int -> PartitionLambda Int -> Int
@@ -80,8 +80,8 @@ memoizedKostka = memo2 b where
 
 -- Inverse der Matrix aus Kostkazahlen, 
 -- untere Dreiecksmatrix mit Einsern auf der Diagonale
--- monomial = kostkaInv * schur
--- schur = complete * kostkaInv
+-- m_i = sum [ kostkaInv i j * s_j | j<-partitions ]
+-- s_j = sum [ h_i * kostkaInv i j | i<-partitions ]
 kostkaInv :: (Partition a, Partition b, Num i) => a->b->i 
 kostkaInv lambda mu = fromIntegral $ memoizedKostkaInv (partAsLambda lambda) (partAsLambda mu)  
 memoizedKostkaInv :: PartitionLambda Int -> PartitionLambda Int -> Int
@@ -90,7 +90,7 @@ memoizedKostkaInv = memo2 ko1 where
 	ko2 w l m = invertLowerDiag1 (map partAsLambda $ partOfWeight w) memoizedKostka l m
 
 -- completeMonomial, symmetrische unimodulare Matrix
--- complete = completeMonomial * monomial
+-- h_i = sum [ completeMonomial i j * m_j | j<-partitions ]
 -- completeMonomial = flip kostka * kostka
 -- Skalarprodukt: <h,h> = completeMonomial h h
 completeMonomial :: (Partition a, Partition b, Num i) => a->b->i 
@@ -101,7 +101,7 @@ memoizedKostkaTKostka = memo2 ko1 where
 	ko2 w = mM (map partAsLambda $ partOfWeight w) (flip memoizedKostka) memoizedKostka 
 
 -- monomialComplete, symmetrische unimodulare Matrix
--- monomial = monomialComplete * complete
+-- m_i = sum [ monomialComplete i j * h_j | j<-partitions ]
 -- monomialComplete = kostkaInv * flip kostkaInv
 -- Skalarprodukt: <m,m> = monomialComplete m m
 monomialComplete :: (Partition a, Partition b, Num i) => a->b->i 
