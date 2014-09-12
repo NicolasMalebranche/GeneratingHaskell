@@ -11,7 +11,7 @@ import K3
 import LinearAlgebra
 import Permutation
 import Partitions
-import Data.Permute
+import Data.Permute hiding (sort,sortBy)
 import Data.List
 import qualified Data.Set as Set
 import ShowMatrix
@@ -20,10 +20,6 @@ import Data.Ratio
 import Debug.Trace
 import Control.Concurrent
 import Control.Monad
-import Control.Concurrent.MVar
-import qualified Data.IntMap as IntMap
-import qualified Math.LinearAlgebra.Sparse.Matrix as Sparse
-
 
 -- CupProdukt auf symmetrisiertem A{S_n}
 --cupSA :: (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> (PartitionLambda Int, [Int]) -> K3Domain
@@ -33,7 +29,7 @@ cupSA (pc,lc) (pa,la) (pb,lb) = sum [res pi | pi <- partAllPerms pa] where
 	permuteGrp (PartLambda l, a) = map concat $ symmetrize $
 		map (snd . unzip) $ groupBy (\a b -> fst a==fst b) $ zip l a
 	symmetrize [] = [[]]
-	symmetrize (l:r) = [pl : a | a <- symmetrize r, pl <- nub $ permutations l]
+	symmetrize (l:r) = [pl : a | a <- symmetrize r, pl <- nub $  permutations l]
 	-- Möglichkeiten, die Klassen den Orbits zuzuordnen
 	pga = permuteGrp (pa,la)
 	pgb = permuteGrp (pb,lb)
@@ -49,6 +45,42 @@ cupSA (pc,lc) (pa,la) (pb,lb) = sum [res pi | pi <- partAllPerms pa] where
 		-- Es reicht, über die Möglichkeiten für die Eingabe zu summieren. 
 		cupSc = sum [ cupSym cl cmn (als pla) (bls plb) | pla<-pga, plb<-pgb]
 
+allPerms = memo p where p n = map (array (0,n-1). zip [0..]) (Data.List.permutations [0..n-1]) 
+
+-- F�gt alle möglichen Listen an einePartition an, so dass sich ein bestimmter Grad ergibt
+completeHilb lam@(PartLambda l) deg = make (deg - 2* partDegree lam) 0 l (24::K3Domain) where
+	make 0 _ [] _ = [[]]
+	make rdeg _ [] _ = []
+	make rdeg old (a:l) max =
+		 concat [map (i:) $ make (rdeg-d) a l i | i<-[0..23],
+			 if a==old then i<=max else True, let d=degK3 i, d<=rdeg ]
+
+
+mcupSA ((pa,la),(pb,lb)) = sumUp $concat $ map multiply symcycB   where
+	n = partWeight pa
+	degA = degHilbK3 (pa,la); degB = degHilbK3 (pb,lb)
+	perA = partPermute pa; perB = partPermute pb
+	cycB = sortBy ((.length).flip compare.length) (cycles perB)
+	orbA = zip (sortBy (flip compare) $ map Set.fromList $ cycles perA) la
+	-- Konjugiert mit allen Permutationen
+	symcycB = [ map (map (p!)) cycB | p <- allPerms n]
+	listLengthDeg 0 0 = [[]]; listLengthDeg 0 _ = []
+	listLengthDeg n d = concat [map (i:)$ listLengthDeg (n-1) deg| i<-[0..23],let deg = d-degK3 i, deg>=0]
+	multiply cy = [((partC,helem co),fromIntegral z) | co<-combs,let z=cupSym co cmo orbA orbB,z/=0] where 
+		pi = cyclesPermute n cy
+		perC = compose perA pi
+		sorC = sortBy ((.Set.size).flip compare.Set.size) $ map Set.fromList $ cycles perC
+		partC = PartLambda $ map Set.size sorC
+		helem = concat.map (sortBy (flip compare).map snd).groupBy ((.Set.size.fst).(==).Set.size.fst)  
+		combs = map (zip sorC) $ listLengthDeg (length sorC) (degA+degB-2*(n-length sorC))
+		orbB = zip (map Set.fromList cy) lb
+		cmo = map Set.fromList $ commonOrbits perA pi
+	sumUp = map(\g-> (fst $ head g,sum $ map snd g)).groupBy((.fst).(==).fst).sortBy((.fst).compare.fst) 	
+
+eqCup n deg range1 range2 = all id [a(i,j) ==b(i,j)|i<-range1,j<-range2] where
+	a(i,j) = sort [(pr,toInt y)|(pr,y)<-cupSAsp n deg (i,j) ]
+	b = sort.mcupSA
+
 -- Ergibt Liste mit Nicht-Null Elementen
 cupSAsp n deg = cl where
 	base = hilbBase n deg
@@ -57,6 +89,13 @@ cupSAsp n deg = cl where
 		ac = all(==1) c; aa = all(==1) a; ab=all(==1) b
 		u = if ac then a==b else if ab then a==c  else if aa then b==c else True
 		v = if ab && aa && all (/=23) lc then take n (Data.List.sortBy(flip compare)(la++lb))==lc else True
+
+cupSquare a = res  where
+	n = partWeight $ fst a ; k = degHilbK3 a
+	ic = [(b,y) | b <- hilbBase n k, let y = integerCreation b a, y/=0]
+	base2 = [ ((a,b),x*y) | (a,x)<-ic, (b,y)<-ic]
+	preres = sumSparse [multSparse xy $ cupSAsp n (2*k) ab | (ab,xy) <- base2]
+	res = sumSparse [ [(c,ci*z) | c <- hilbBase n (2*k) , let ci = creationInteger c ab, ci /=0 ]| (ab,z)<-preres]
 
 -- Multiplikation in Lehn & Sorgers A{S_n}
 -- Ausgabe -> Gemeinsame Orbits -> Eingabe1 -> Eingabe2 -> Faktor
@@ -68,7 +107,8 @@ cupSym cList commonOrbits aList bList = product [ sum (x o) | o <- commonOrbits 
 		xb = [bf | (bOr,bf) <- bList, Set.isSubsetOf bOr o]
 		xc = [cf | (cOr,cf) <- cList, Set.isSubsetOf cOr o]
 		cupList = xa ++ xb ++ replicate defekt 23
-		defekt = div (Set.size o + 2 - length xa - length xb - length xc) 2
+		errInt q = if denominator q ==1 then numerator q else error "cupSym defect"
+		defekt = errInt $ (Set.size o + 2 - length xa - length xb - length xc) % 2
 
 -- Ganzzahlige Basis nach Qin / Wang
 -- Achtung: Koffizienten sind nur rational!
@@ -113,10 +153,10 @@ writeSym2 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym2.txt") m where
 	ic = memo2 integerCreation
 	h4 = hilbBase n 4 
 	h2 = hilbBase n 2;  h22 = [(i,j) | i<-h2, j<-h2, i<=j]
-	cup = cupSAsp n 4
+	cup = mcupSA
 	base2 (i,j) = [((r,s),u*v) | r<-h2, let u=ic r i, u/=0, s<-h2, let v=ic s j, v/=0]
 	cup2 ij = sumSparse [multSparse uv $ cup rs | (rs,uv) <- base2 ij ]
-	col ij = [ toInt$sum[creationInteger x4 y4 * z | (x4,z) <- cup2 ij] | y4<-h4 ]
+	col ij = [ toInt$sum[creationInteger y4 x4 * z | (x4,z) <- cup2 ij] | y4<-h4 ]
 
 -- Schreibt Multiplikationsmatrix für Produkte mit Faktoren von Grad 2 und 4
 -- dro und tak geben Zeilenbereiche an (zum Aufteilen auf meherere Prozesse)
@@ -131,7 +171,7 @@ write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24.txt")  m where
 	base2 y2 y4 = [((x2,x4),u*v) | (x4,u) <- ic4 y4,  x2<-h2, let v=ic x2 y2, v/=0]
 	cup2 y2 y4 = sumSparse [mult uv $ cup x24 | (x24,uv) <- base2 y2 y4]  
 	mult alpha = map (\(a,v)->(a,alpha*v))
-	col y2 y4 = [z| y6<-h6,let z = toInt$sum [z*creationInteger x6 y6 | (x6,z) <- cup2 y2 y4] ]
+	col y2 y4 = [z| y6<-h6,let z = toInt$sum [z*creationInteger y6 x6 | (x6,z) <- cup2 y2 y4] ]
 
 multSparse alpha = map (\(a,v)->(a,alpha*v))
 sumSparse = foldr somme [] where
@@ -147,11 +187,11 @@ writeSym3 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3.txt") s where
 	h2 = hilbBase n 2; h4 = hilbBase n 4; h6 = hilbBase n 6
 	h222 = [(i,j,k)| i<-h2, j<-h2, i<=j, k<-h2, j<=k]
 	mult alpha = map (\(a,v)->(a,alpha*v))
-	csaSP = cupSAsp n 6
-	cup3 (n,m,l) = sumSparse [mult c2 $ csaSP (l,p) | p<-h4, let c2=cup2 p n m, c2 /= 0]	
-	cup2 = memo3 cupSA
+	csaSP = mcupSA
+	cup3 (n,m,l) = sumSparse [mult c2 $ csaSP (l,p) | (p,c2)<-mcupSA (n,m)]	
+	--cup2 = memo3 cupSA
 	ic = memo2 integerCreation
 	base3 (i,j,k) = [((n,m,l),x*y*z)|n<-h2,let x=ic n i,x/=0, m<-h2,let y=ic m j, y/=0, l<-h2, let z=ic l k, z/=0]
 	icup3 ijk = sumSparse [mult xyz $ cup3 nml | (nml,xyz)<-base3 ijk ]
-	line (i,j,k) = [toInt$sum [v*creationInteger q r|(q,v)<-icup3(i,j,k)]| r<-h6]
+	line (i,j,k) = [toInt$sum [v*creationInteger r q |(q,v)<-icup3(i,j,k)]| r<-h6]
 	s = "a := [\n" ++ concat(intersperse ",\n" [show $line ijk | ijk<-h222]) ++"\n];;\n"
