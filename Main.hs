@@ -19,11 +19,11 @@ main = do
 	writeSym2 3
 	putStrLn ", 4"
 	writeSym2 4
-	putStrLn "write the rest"
+{-	putStrLn "write the rest"
 	write24 5
 	write24 6
 	write24 7
 	writeSym3 5
 	writeSym3 6
 	writeSym3 7
-	putStrLn "Done."
+-}	putStrLn "Done."
