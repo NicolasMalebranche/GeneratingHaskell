@@ -11,7 +11,7 @@ import K3
 import LinearAlgebra
 import Permutation
 import Partitions
-import Data.Permute
+import Data.Permute hiding (sort,sortBy)
 import Data.List
 import qualified Data.Set as Set
 import ShowMatrix
@@ -49,7 +49,61 @@ cupSA (pc,lc) (pa,la) (pb,lb) = sum [res pi | pi <- partAllPerms pa] where
 		-- Es reicht, über die Möglichkeiten für die Eingabe zu summieren. 
 		cupSc = sum [ cupSym cl cmn (als pla) (bls plb) | pla<-pga, plb<-pgb]
 
+-- (Partition,[Klasse]) geht auf [([(Zykel,Klasse)],Multiplizitaet)]
+toSn =  makeSn where
+	shape l = (map (forth IntMap.!) l, IntMap.fromList $ zip [1..] sl) where
+		sl = map head$ group $ sort l; 
+		forth = IntMap.fromList$ zip sl [1..]
+	symmetrize :: (PartitionLambda Int, [K3Domain])-> [([([Int],K3Domain)],Int) ]
+	symmetrize (part,l) = map (\x -> (head x, length x)) $ group $ sort perms  where 
+		perms = [sortSn$ zipWith (\c cb ->(ordCycle $ map(p!)c, cb) ) cyc l | p <- allPerms n]
+		cyc = sortBy ((.length).flip compare.length) $ cycles $ partPermute part
+		n = partWeight part
+	ordCycle cyc = take l $ drop p $ cycle cyc where
+		(m,p,l) = foldl findMax (-1,-1,0) cyc
+		findMax (m,p,l) ce = if m<ce then (ce,l,l+1) else (m,p,l+1)
+	sortSn = sortBy	compareSn  where
+		compareSn (cyc1,class1) (cyc2,class2) = let
+			cL = compare l2 $ length cyc1 ; l2 = length cyc2
+			cC = compare class2 class1
+			in if cL /= EQ then cL else if cC /= EQ then cC else compare cyc2 cyc1  
+	mSym = memo symmetrize
+	makeSn (part,l) = [ ([(z,im IntMap.! k) | (z,k) <- op ] ,m)  | (op,m) <- res]  where
+		(repl,im) = shape l
+		res = mSym (part,repl)
 
+	
+mcupSA ((pa,la),(pb,lb)) = sumUp $concat $ map multiply symcycB   where
+	n = partWeight pa
+	degA = degHilbK3 (pa,la); degB = degHilbK3 (pb,lb)
+	perA = partPermute pa; perB = partPermute pb
+	cycB = sortBy ((.length).flip compare.length) (cycles perB)
+	orbA = zip (sortBy (flip compare) $ map Set.fromList $ cycles perA) la
+	-- Konjugiert mit allen Permutationen
+	symcycB = [ map (map (p!)) cycB | p <- allPerms n]
+	symB = map (\x -> (head x, length x)) $ group $ sort perms  where 
+		perms = [sortSn$ zipWith (\c cb ->(ordCycle $ map(p!)c, cb) ) cycB lb | p <- allPerms n]
+	ordCycle cyc = take l $ drop p $ cycle cyc where
+		(m,p,l) = foldl findMax (-1,-1,0) cyc
+		findMax (m,p,l) ce = if m<ce then (ce,l,l+1) else (m,p,l+1)
+	sortSn = sortBy	compareSn  where
+		compareSn (cyc1,class1) (cyc2,class2) = let
+			cL = compare l2 $ length cyc1 ; l2 = length cyc2
+			cC = compare class2 class1
+			in if cL /= EQ then cL else if cC /= EQ then cC else compare cyc2 cyc1  
+	listLengthDeg 0 0 = [[]]; listLengthDeg 0 _ = []
+	listLengthDeg n d = concat [map (i:)$ listLengthDeg (n-1) deg| i<-[0..23],let deg = d-degK3 i, deg>=0]
+	multiply cy = [((partC,helem co),fromIntegral z) | co<-combs,let z=cupSym co cmo orbA orbB,z/=0] where 
+		pi = cyclesPermute n cy
+		perC = compose perA pi
+		sorC = sortBy ((.Set.size).flip compare.Set.size) $ map Set.fromList $ cycles perC
+		partC = PartLambda $ map Set.size sorC
+		helem = concat.map (sortBy (flip compare).map snd).groupBy ((.Set.size.fst).(==).Set.size.fst)  
+		combs = map (zip sorC) $ listLengthDeg (length sorC) (degA+degB-2*(n-length sorC))
+		orbB = zip (map Set.fromList cy) lb
+		cmo = map Set.fromList $ commonOrbits perA pi
+	sumUp = map(\g-> (fst $ head g,sum $ map snd g)).groupBy((.fst).(==).fst).sortBy((.fst).compare.fst) 	
+allPerms = memo p where p n = map (array (0,n-1). zip [0..]) (Data.List.permutations [0..n-1]) 
 
 -- Multiplikation in Lehn & Sorgers A{S_n}
 -- Ausgabe -> Gemeinsame Orbits -> Eingabe1 -> Eingabe2 -> Faktor
@@ -169,7 +223,7 @@ write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24_Tr.txt")  m where
 	h2 = hilbBase n 2
 	h4 = hilbBase n 4 
 	h6 = hilbBase n 6
-	cup = cupSAsp n 6
+	cup = mcupSA
 	ic = memo2 integerCreation
 	col y2 y4 = [toInt$sum[cri x6 * z | (x6,z)<-genres ] | y6<-h6, let cri = memo integerCreation y6] where 
 		genres = [(x6,z*u*v) |x4<-h4,let u=integerCreation x4 y4,u/=0,x2<-h2, let v = ic x2 y2,v/=0, (x6,z)<-cup (x4,x2)]
