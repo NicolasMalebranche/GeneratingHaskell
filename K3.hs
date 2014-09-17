@@ -95,6 +95,12 @@ cupLNonZeros = f where
 	nz 0 = [(0,[])]
 	nz n = [(k,i:r) | (k,(i,j)) <- cupNonZeros, (kk,r) <- f (n-1) , kk==j]
 
+-- Cup-Produkt einer Liste, in Sparse-Version
+cupLSparse = cu . filter (/=0) where
+	cu [] = [(0,1)]; cu [i] = [(i,1)]
+	cu [i,j] = [(k,z) | k<-[0..23], let z = cup k (i,j), z/=0]
+	cu _ = []
+
 -- Adjungiertes zum Cup Produkt
 cupAd = memo2 ad where 
 	ad (i,j) k = sum [bilK3inv_func i ii * bilK3inv_func j jj 
@@ -117,6 +123,16 @@ cupAdLNonZeros = f where
 	f = memo nz
 	nz 0 = [([],23)]
 	nz n = [(i:r,k) | ((i,j),k) <- cupAdNonZeros, (r,kk) <- f (n-1) , kk==j]
+
+-- n-faches Koprodukt einer Klasse k, in Sparse-Version
+cupAdLSparse = memo2 cals where
+	cals :: Int -> K3Domain -> [([K3Domain],Int)]
+	cals 0 k = if k==23 then [([],1)] else []
+	cals 1 k = [([k], 1)]
+	cals 2 k = [([i,j],ca) | i<-[0..23], j<-[0..23], let ca = cupAd (i,j) k, ca /=0]
+	cals n k = clean [(i:r,v*w) |([i,j],w)<-cupAdLSparse 2 k, (r,v) <- cupAdLSparse (n-1) j]
+	clean = map (\g -> (fst$head g, sum$(map snd g))). groupBy cg.sortBy cs  
+	cs = (.fst).compare.fst; cg = (.fst).(==).fst
 
 -- Eulerklasse
 euler = array (0,23) [(i, cf i ) | i<-[0..23]] where
