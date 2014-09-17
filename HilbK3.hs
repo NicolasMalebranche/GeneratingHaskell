@@ -13,16 +13,11 @@ import Permutation
 import Partitions
 import Data.Permute hiding (sort,sortBy)
 import Data.List
+import qualified Data.IntMap as IntMap
 import qualified Data.Set as Set
 import ShowMatrix
 import SymmetricFunctions
 import Data.Ratio
-import Debug.Trace
-import Control.Concurrent
-import Control.Monad
-import Control.Concurrent.MVar
-import qualified Data.IntMap as IntMap
-import qualified Math.LinearAlgebra.Sparse.Matrix as Sparse
 
 type AnBase = (PartitionLambda Int, [K3Domain])
 type SnBase = [([Int],K3Domain)]
@@ -74,10 +69,12 @@ multSn l1 l2 = tensor $ map m cmno where
 		sset12 = [xv | xv <-set1++set2, Set.isSubsetOf (fst xv) or]
 		fup = cupLSparse $ map snd sset12 ++ replicate def 23 
 		t = [c | c<-cyt, Set.isSubsetOf (Set.fromList c) or]
-		fdown = [(zip t l,v*w*24^def)| let [(r,v)] = fup, (l,w)<-cupAdLSparse(length t) r ]-- TODO: exhaustive Pattern match 
+		fdown = {- nubSparse-} [(zip t l,v*w*24^def)| (r,v) <- fup, (l,w)<-cupAdLSparse(length t) r ] 
 		def = toIntStrict ((Set.size or + 2 - length sset12 - length t)%2)
-	tensor [] = [([],1)]
-	tensor (t:r) = [(y++x,w*v) |(x,v)<-tensor r, (y,w) <- t ]
+
+-- Tensort Sparse Listen zusammen
+tensor [] = [([],1)]
+tensor (t:r) = [(y++x,w*v) |(x,v)<-tensor r, (y,w) <- t ]
 
 -- Multipliziert zwei Paare (PartLambda Int,[K3Domain])
 multAn :: AnBase -> AnBase -> [(AnBase,Int)]
@@ -85,57 +82,13 @@ multAn a = multb where
 	(asl,m) = toSn a
 	toAn sn =(PartLambda l, k) where (l,k)= unzip$ sortBy (flip compare)$ map (\(c,k)->(length c,k)) sn
 	multb (pb,lb) = map ungroup$ groupBy ((.fst).(==).fst) $sort elems where
-		ungroup g@((an,_):_) = (an, sum $ map snd g )
+		ungroup g@((an,_):_) = (an, m*(sum $ map snd g) )
 		bs = zip (cycles $ partPermute pb) lb
 		elems = [(toAn cs,v) | as <- asl, (cs,v) <- multSn as bs]
 		
 
--- Multiplikation in Lehn & Sorgers A{S_n}
--- Ausgabe -> Gemeinsame Orbits -> Eingabe1 -> Eingabe2 -> Faktor
--- Ausgabe, Eingabe1 und Eingabe2 müssen alle feiner partitioniert sein als Gemeinsame Orbits
-cupSym :: [(Set.Set Int, Int)] -> [Set.Set Int] -> [(Set.Set Int, Int)] -> [(Set.Set Int, Int)] -> K3Domain
-cupSym cList commonOrbits aList bList = product [ sum (x o) | o <- commonOrbits ] where
-	x o = [cupAdL xc delta * cupL delta cupList * (euler!23)^defekt | delta <- [0..23]] where
-		xa = [af | (aOr,af) <- aList, Set.isSubsetOf aOr o]
-		xb = [bf | (bOr,bf) <- bList, Set.isSubsetOf bOr o]
-		xc = [cf | (cOr,cf) <- cList, Set.isSubsetOf cOr o]
-		cupList = xa ++ xb ++ replicate defekt 23
-		defekt = div (Set.size o + 2 - length xa - length xb - length xc) 2
-
-
-
 allPerms = memo p where p n = map (array (0,n-1). zip [0..]) (Data.List.permutations [0..n-1]) 	
 
-mcupSA ((pa,la),(pb,lb)) = sumUp $concat $ map multiply symcycB   where
-	n = partWeight pa
-	degA = degHilbK3 (pa,la); degB = degHilbK3 (pb,lb)
-	perA = partPermute pa; perB = partPermute pb
-	cycB = sortBy ((.length).flip compare.length) (cycles perB)
-	orbA = zip (sortBy (flip compare) $ map Set.fromList $ cycles perA) la
-	-- Konjugiert mit allen Permutationen
-	symcycB = [ map (map (p!)) cycB | p <- allPerms n]
-	symB = map (\x -> (head x, length x)) $ group $ sort perms  where 
-		perms = [sortSn$ zipWith (\c cb ->(ordCycle $ map(p!)c, cb) ) cycB lb | p <- allPerms n]
-	ordCycle cyc = take l $ drop p $ cycle cyc where
-		(m,p,l) = foldl findMax (-1,-1,0) cyc
-		findMax (m,p,l) ce = if m<ce then (ce,l,l+1) else (m,p,l+1)
-	sortSn = sortBy	compareSn  where
-		compareSn (cyc1,class1) (cyc2,class2) = let
-			cL = compare l2 $ length cyc1 ; l2 = length cyc2
-			cC = compare class2 class1
-			in if cL /= EQ then cL else if cC /= EQ then cC else compare cyc2 cyc1  
-	listLengthDeg 0 0 = [[]]; listLengthDeg 0 _ = []
-	listLengthDeg n d = concat [map (i:)$ listLengthDeg (n-1) deg| i<-[0..23],let deg = d-degK3 i, deg>=0]
-	multiply cy = [((partC,helem co),fromIntegral z) | co<-combs,let z=cupSym co cmo orbA orbB,z/=0] where 
-		pi = cyclesPermute n cy
-		perC = compose perA pi
-		sorC = sortBy ((.Set.size).flip compare.Set.size) $ map Set.fromList $ cycles perC
-		partC = PartLambda $ map Set.size sorC
-		helem = concat.map (sortBy (flip compare).map snd).groupBy ((.Set.size.fst).(==).Set.size.fst)  
-		combs = map (zip sorC) $ listLengthDeg (length sorC) (degA+degB-2*(n-length sorC))
-		orbB = zip (map Set.fromList cy) lb
-		cmo = map Set.fromList $ commonOrbits perA pi
-	sumUp = map(\g-> (fst $ head g,sum $ map snd g)).groupBy((.fst).(==).fst).sortBy((.fst).compare.fst) 	
 -- Ganzzahlige Basis nach Qin / Wang
 -- integerBase = integerCreation * creation
 -- Achtung: Koffizienten sind nur rational!
@@ -152,6 +105,32 @@ creationInteger (pc,lc) (pi,li) = if del==0 then 0 else fromIntegral $ prod * pa
 	(pc0,pi0) = (subpart (pc,lc) 0 , subpart (pi,li) 0)
 	(pcz,piz) = (subpart (pc,lc) 23, subpart (pi,li)23)
 	del = delta pc0 pi0 * delta pcz piz
+
+intCrea :: AnBase -> [(AnBase,Ratio Int)]
+intCrea = map makeAn. tensor. construct where
+	memopM = memo pM
+	pM pa = [(pl,v) | p@(PartLambda pl)<-map partAsLambda$ partOfWeight (partWeight pa), let v = powerMonomial p pa, v/=0]
+	construct pl = onePart pl : xPart pl : [ [(zip l $ repeat a,v)| (l,v)<- memopM (subpart pl a)] |a<-[1..22]] 
+	onePart pl = [(zip l$ repeat 0, 1%partZ p)] where p@(PartLambda l) = subpart pl 0
+	xPart pl = [(zip l$ repeat 23, 1)] where (PartLambda l) = subpart pl 23
+	makeAn (list,v) = ((PartLambda x,y),v) where (x,y) = unzip$ sortBy (flip compare) list 
+
+creaInt :: AnBase -> [(AnBase, Int)]
+creaInt = map makeAn. tensor. construct where
+	memomP = memo mP
+	mP pa = [(pl,v) | p@(PartLambda pl)<-map partAsLambda$ partOfWeight (partWeight pa), let v = monomialPower p pa, v/=0]
+	construct pl = onePart pl : xPart pl : [ [(zip l $ repeat a,v)| (l,v)<- memomP (subpart pl a)] |a<-[1..22]] 
+	onePart pl = [(zip l$ repeat 0, partZ p)] where p@(PartLambda l) = subpart pl 0
+	xPart pl = [(zip l$ repeat 23, 1)] where (PartLambda l) = subpart pl 23
+	makeAn (list,v) = ((PartLambda x,y),v) where (x,y) = unzip$ sortBy (flip compare) list 
+
+cupInt :: AnBase -> AnBase -> [(AnBase,Int)]
+cupInt a b = [(s,toIntStrict z)| (s,z) <- y] where
+	ia = intCrea a; ib = intCrea b
+	x = sparseNub [(e,v*w*fromIntegral z) | (p,v) <- ia, let m = multAn p, (q,w) <- ib, (e,z)<- m q] 
+	y = sparseNub [(s,v*fromIntegral w) | (e,v) <- x, (s,w) <- creaInt e]
+	sparseNub = map (\g->(fst$head g, sum $map snd g)).groupBy ((.fst).(==).fst).sortBy((.fst).compare.fst)
+
 
 degHilbK3 (lam,a) = 2*partDegree lam + sum [degK3 i | i<- a]
 
