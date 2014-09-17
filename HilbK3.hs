@@ -22,6 +22,7 @@ import Data.Ratio
 type AnBase = (PartitionLambda Int, [K3Domain])
 type SnBase = [([Int],K3Domain)]
 
+-- Aequivalent zu partZ, nur mit gefaerbten Partitionen
 anZ :: AnBase -> Int
 anZ (PartLambda l, k) = comp 1 (0,undefined) 0 $ zip l k where
 	comp acc old m (e@(x,_):r) | e==old = comp (acc*x) old (m+1) r
@@ -32,7 +33,8 @@ anZ (PartLambda l, k) = comp 1 (0,undefined) 0 $ zip l k where
 -- (Partition,[Klasse]) geht auf ([[(Zykel,Klasse)]],Multiplizitaet)
 -- gibt die symmetrisierte Interpretation in A{S_n} zurueck
 toSn :: AnBase -> ([SnBase],Int)
-toSn =  makeSn where
+toSn = makeSn where
+	allPerms = memo p where p n = map (array (0,n-1). zip [0..]) (Data.List.permutations [0..n-1]) 	
 	shape l = (map (forth IntMap.!) l, IntMap.fromList $ zip [1..] sl) where
 		sl = map head$ group $ sort l; 
 		forth = IntMap.fromList$ zip sl [1..]
@@ -53,6 +55,7 @@ toSn =  makeSn where
 	makeSn (part,l) = ([ [(z,im IntMap.! k) | (z,k) <- op ]|op <- res],m)  where
 		(repl,im) = shape l
 		(res,m) = mSym (part,repl)
+
 -- Kleiner Check
 check_toSn = foldr (&&) True [snd (toSn p) == anZ p | p <- hilbBase 6 6 ]
 
@@ -85,26 +88,6 @@ multAn a = multb where
 		ungroup g@((an,_):_) = (an, m*(sum $ map snd g) )
 		bs = zip (cycles $ partPermute pb) lb
 		elems = [(toAn cs,v) | as <- asl, (cs,v) <- multSn as bs]
-		
-
-allPerms = memo p where p n = map (array (0,n-1). zip [0..]) (Data.List.permutations [0..n-1]) 	
-
--- Ganzzahlige Basis nach Qin / Wang
--- integerBase = integerCreation * creation
--- Achtung: Koffizienten sind nur rational!
-integerCreation (pi,li) (pc,lc) = if del==0 then 0 else prod / fromIntegral (partZ pc0) where
-	prod = product [powerMonomial (subpart (pi,li) a) (subpart (pc,lc) a) | a<-[1..22]]
-	(pc0,pi0) = (subpart (pc,lc) 0 , subpart (pi,li) 0)
-	(pcz,piz) = (subpart (pc,lc) 23, subpart (pi,li)23)
-	del = delta pc0 pi0 * delta pcz piz
-
--- Ganzzahlige Basis nach Qin / Wang
--- creation = creationInteger * integerBase
-creationInteger (pc,lc) (pi,li) = if del==0 then 0 else fromIntegral $ prod * partZ pc0 where
-	prod = product [monomialPower (subpart (pc,lc) a) (subpart (pi,li) a) | a<-[1..22]]
-	(pc0,pi0) = (subpart (pc,lc) 0 , subpart (pi,li) 0)
-	(pcz,piz) = (subpart (pc,lc) 23, subpart (pi,li)23)
-	del = delta pc0 pi0 * delta pcz piz
 
 intCrea :: AnBase -> [(AnBase,Ratio Int)]
 intCrea = map makeAn. tensor. construct where
@@ -124,18 +107,32 @@ creaInt = map makeAn. tensor. construct where
 	xPart pl = [(zip l$ repeat 23, 1)] where (PartLambda l) = subpart pl 23
 	makeAn (list,v) = ((PartLambda x,y),v) where (x,y) = unzip$ sortBy (flip compare) list 
 
+
+-- Cup-Produkt in integraler Kohomologie
 cupInt :: AnBase -> AnBase -> [(AnBase,Int)]
 cupInt a b = [(s,toIntStrict z)| (s,z) <- y] where
 	ia = intCrea a; ib = intCrea b
 	x = sparseNub [(e,v*w*fromIntegral z) | (p,v) <- ia, let m = multAn p, (q,w) <- ib, (e,z)<- m q] 
 	y = sparseNub [(s,v*fromIntegral w) | (e,v) <- x, (s,w) <- creaInt e]
-	sparseNub = map (\g->(fst$head g, sum $map snd g)).groupBy ((.fst).(==).fst).sortBy((.fst).compare.fst)
 
+-- Fasst multiple Vorkommen in einer Sparse-Liste zusammen
+sparseNub = map (\g->(fst$head g, sum $map snd g)).groupBy ((.fst).(==).fst).sort
+
+-- Produkt aller Klassen aus der Liste
+cupIntList :: [AnBase] -> [(AnBase,Int)]
+cupIntList = makeInt. ci . cL where
+	cL [b] = intCrea b
+	cL (b:r) = x where
+		ib = intCrea b
+		x = sparseNub [(e,v*w*fromIntegral z) | (p,v) <- cL r, let m = multAn p, (q,w) <- ib, (e,z)<-m q]
+	makeInt l = [(e,toIntStrict z) | (e,z) <- l]
+	ci l = sparseNub [(s,v*fromIntegral w) | (e,v) <- l, (s,w) <- creaInt e]
 
 degHilbK3 (lam,a) = 2*partDegree lam + sum [degK3 i | i<- a]
 
 -- Basis von Hilb^n(K3) vom Grad d 
-hilbBase n d = map ((\(a,b)->(PartLambda a,b)).unzip) $ hilbOperators n d  
+hilbBase = memo2 hb where
+	hb n d = sort $map ((\(a,b)->(PartLambda a,b)).unzip) $ hilbOperators n d  
 
 -- Alle möglichen Kombinationen von Erzeugungsoperatoren von 
 -- Gewicht n und Grad d
@@ -153,30 +150,38 @@ subpart (PartLambda pl,l) a = PartLambda $ sb pl l where
 	sb pl [] = sb pl [0,0..]
 	sb (e:pl) (la:l) = if la == a then e: sb pl l else sb pl l
 
-
+-- Wandelt ganze rationale Zahl in Int um
 toInt q = if n ==1 then z else 7777777 where (z,n) =(numerator q, denominator q)
 toIntStrict q = if n ==1 then z else error"not integral" where (z,n) =(numerator q, denominator q)
 
-{-
-writeSym3' n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3N.txt") s where
-	h4 = hilbBase n 4
-	h6 = hilbBase n 6
-	h2 = hilbBase n 2
-	h222 = [(i,j,k)| i<-h2, j<-h2, i<=j, k<-h2, j<=k]
-	somme [] [] = []
-	somme a [] = a
-	somme [] b = b
-	somme a@((aa,va):ra) b@((bb,vb):rb) | aa==bb = (aa,va+vb):somme ra rb
-		| aa < bb = (aa,va):somme ra b
-		| otherwise=(bb,vb):somme a rb
-	mult alpha = map (\(a,v)->(a,alpha*v))
-	csaSP = cupSAsp n 6
-	cup3 (n,m,l) = foldr somme [] [mult c2 $ csaSP (l,p) | p<-h4, let c2=cup2 p n m, c2 /= 0]	
-	cup2 = memo3 cupSA
-	ic = memo2 integerCreation
-	base3 (i,j,k) = [((n,m,l),x*y*z)|n<-h2,let x=ic n i,x/=0, m<-h2,let y=ic m j, y/=0, l<-h2, let z=ic l k, z/=0]
-	icup3 ijk = foldr somme [] [mult xyz $ cup3 nml | (nml,xyz)<-base3 ijk ]
-	line (i,j,k) = [toInt$sum [v*creationInteger r q|(q,v)<-icup3(i,j,k)]| r<-h6]
-	s = "a := [\n" ++ concat(intersperse ",\n" [show $line ijk | ijk<-h222]) ++"\n];;\n"
 
--}
+-- Schreibfunktionen, produzieren Dateien mit Multiplikationsmatrizen
+
+write22 n = writeFile ("GAP_Code/GAP_n="++show n++"_22.txt")  m where
+	m = "a:= [\n" ++ concat (intersperse",\n"[show$col x2 y2 |x2<-h2,y2<-h2,x2<=y2] ) ++"\n];;\n"
+	h2 = hilbBase n 2
+	col x2 y2 = dense (hilbBase n 4) $ cupInt x2 y2
+
+write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24.txt")  m where
+	m = "a:= [\n" ++ concat (intersperse",\n"[show$col y4 y2 |y4<-h4,y2<-h2] ) ++"\n];;\n"
+	h2 = hilbBase n 2; h4 = hilbBase n 4
+	col y4 y2 = dense (hilbBase n 6) $ cupInt y4 y2
+	
+write222 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3.txt")  m where
+	m = "a:= [\n" ++ concat (intersperse",\n"[show$ c z2 |x2<-h2,y2<-h2,x2<=y2,let c = col x2 y2, z2<-h2,y2<=z2] ) ++"\n];;\n"
+	h2 = hilbBase n 2
+	col x2 y2 = dense (hilbBase n 6). cup3 x2 y2
+	cup3 a b = f where
+		ia = intCrea a; ib = intCrea b
+		x = sparseNub [(e,v*w*fromIntegral z) | (p,v) <- ia, let m = multAn p, (q,w) <- ib, (e,z)<- m q] 
+		f c =  [(s,toInt z)| (s,z) <- z] where
+			m = multAn c
+			y = sparseNub [(s,v*fromIntegral w) | (q,v) <- x,let , (s,w) <- m q]
+			z = sparseNub [(s,v*fromIntegral w) | (e,v) <- y, (s,w) <- creaInt e]
+
+-- Macht aus einer Sparse-Liste eine Dense-Liste
+dense (p:o) (q:r) = if p==fst q then  snd q : dense o r else 0: dense o (q:r)
+dense o [] = zipWith const [0,0..] o
+dense [] _ = error "Falsch sortiert"
+
+
