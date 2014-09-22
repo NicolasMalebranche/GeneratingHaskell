@@ -144,6 +144,12 @@ hilbOperators = memo2 hb where
 		[(nn,a):x | nn<-[1..n::Int], a <-[1..22], x<-hilbOperators(n-nn)(d-2*nn)] ++
 		[(nn,23):x | nn <-[1..n], x<-hilbOperators(n-nn)(d-2*nn-2)] 
 
+-- Verändert das Gewicht eines AnBase Indizes
+newWeight n (PartLambda l, a) = pq n (l++repeat 1,a++repeat 0) ([],[]) where
+	pq 0 (i:l,b:a) (accl,acca) = if i==1&&b==0 then 
+		Just (PartLambda $reverse accl, reverse acca) else Nothing
+	pq m (i:l,b:a) (accl,acca) = if i<=m then pq (m-i) (l,a) (i:accl,b:acca) else Nothing
+
 -- Hilfsfunktion: Filtert Erzeugerkompositionen
 subpart (PartLambda pl,l) a = PartLambda $ sb pl l where
 	sb [] _ = []
@@ -168,16 +174,10 @@ write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24.txt")  m where
 	col y4 y2 = dense (hilbBase n 6) $ cupInt y4 y2
 	
 write222 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3.txt")  m where
-	m = "a:= [\n" ++ concat (intersperse",\n"[show$ c z2 |x2<-h2,y2<-h2,x2<=y2,let c = col x2 y2, z2<-h2,y2<=z2] ) ++"\n];;\n"
-	h2 = hilbBase n 2
-	col x2 y2 = dense (hilbBase n 6). cup3 x2 y2
-	cup3 a b = f where
-		ia = intCrea a; ib = intCrea b
-		x = sparseNub [(e,v*w*fromIntegral z) | (p,v) <- ia, let m = multAn p, (q,w) <- ib, (e,z)<- m q] 
-		f c =  [(s,toInt z)| (s,z) <- z] where
-			m = multAn c
-			y = sparseNub [(s,v*fromIntegral w) | (q,v) <- x,let , (s,w) <- m q]
-			z = sparseNub [(s,v*fromIntegral w) | (e,v) <- y, (s,w) <- creaInt e]
+	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) hSym) ++"\n];;\n"
+	h2 = hilbBase n 2; hSym = [[x2,y2,z2]|x2<-h2,y2<-h2,x2<=y2,z2<-h2,y2<=z2]
+	col = dense (hilbBase n 6). cupIntList
+
 
 -- Macht aus einer Sparse-Liste eine Dense-Liste
 dense (p:o) (q:r) = if p==fst q then  snd q : dense o r else 0: dense o (q:r)
