@@ -1,4 +1,3 @@
-{-# LANGUAGE ParallelListComp #-}
 
 module HilbK3 where
 
@@ -7,7 +6,6 @@ module HilbK3 where
 import Data.Array
 import Data.MemoTrie
 import K3
-import Permutation
 import Partitions
 import Data.Permute hiding (sort,sortBy)
 import Data.List
@@ -31,13 +29,14 @@ anZ (PartLambda l, k) = comp 1 (0,undefined) 0 $ zip l k where
 -- gibt die symmetrisierte Interpretation in A{S_n} zurueck
 toSn :: AnBase -> ([SnBase],Int)
 toSn = makeSn where
-	allPerms = memo p where p n = map (array (0,n-1). zip [0..]) (Data.List.permutations [0..n-1]) 	
+	allPerms = memo p where p n = map (array (0,n-1). zip [0..]) (permutations [0..n-1]) 
 	shape l = (map (forth IntMap.!) l, IntMap.fromList $ zip [1..] sl) where
 		sl = map head$ group $ sort l; 
 		forth = IntMap.fromList$ zip sl [1..]
-	symmetrize :: (PartitionLambda Int, [K3Domain])-> ([[([Int],K3Domain)]],Int)
-	symmetrize (part,l) = (perms, toIntStrict $ SymmetricFunctions.factorial n% length perms)  where 
-		perms = nub [sortSn$ zipWith (\c cb ->(ordCycle $ map(p!)c, cb) ) cyc l | p <- allPerms n]
+	symmetrize :: AnBase -> ([[([Int],K3Domain)]],Int)
+	symmetrize (part,l) = (perms, toInt $ factorial n % length perms)  where 
+		perms = nub [sortSn$ zipWith (\c cb ->(ordCycle $ map(p!)c, cb) ) cyc l 
+			| p <- allPerms n]
 		cyc = sortBy ((.length).flip compare.length) $ cycles $ partPermute part
 		n = partWeight part
 	ordCycle cyc = take l $ drop p $ cycle cyc where
@@ -53,15 +52,20 @@ toSn = makeSn where
 		(repl,im) = shape l
 		(res,m) = mSym (part,repl)
 
--- Kleiner Check
-check_toSn = foldr (&&) True [snd (toSn p) == anZ p | p <- hilbBase 6 6 ]
-
 -- Multipliziert zwei Permutationen mit angehefteten Klassen	
 multSn :: SnBase -> SnBase -> [(SnBase,Int)]
 multSn l1 l2 = tensor $ map m cmno where
+	-- Bestimmt die Orbits der von pi und tau erzeugten Gruppe
+	commonOrbits :: Permute -> Permute -> [[Int]]
+	commonOrbits pi tau = Data.List.sortBy (\a b -> compare (length b)(length a)) orl where
+		orl = foldr (uni [][]) (cycles pi) (cycles tau) 
+		uni i ni c []  = i:ni
+		uni i ni c (k:o) = if Data.List.intersect c k == [] 
+			then uni i (k:ni) c o else uni (i++k) ni c o
 	pi1 = cyclesPermute n $ cy1 ; cy1 = map fst l1; n = sum $ map length cy1
 	pi2 = cyclesPermute n $ map fst l2
 	set1 = map (\(a,b)->(Set.fromList a,b)) l1; set2 = map (\(a,b)->(Set.fromList a,b)) l2
+	compose s t = swapsPermute (max (size s) (size t)) (swaps s ++ swaps t)
 	tau = compose pi1 pi2
 	cyt = cycles tau ; 
 	cmno = map Set.fromList $ commonOrbits pi1 pi2; 
@@ -70,9 +74,10 @@ multSn l1 l2 = tensor $ map m cmno where
 		fup = cupLSparse $ map snd sset12 ++ replicate def 23 
 		t = [c | c<-cyt, Set.isSubsetOf (Set.fromList c) or]
 		fdown = {- nubSparse-} [(zip t l,v*w*24^def)| (r,v) <- fup, (l,w)<-cupAdLSparse(length t) r ] 
-		def = toIntStrict ((Set.size or + 2 - length sset12 - length t)%2)
+		def = toInt ((Set.size or + 2 - length sset12 - length t)%2)
 
 -- Tensort Sparse Listen zusammen
+tensor :: Num a =>  [[([b],a)]] -> [([b],a)]
 tensor [] = [([],1)]
 tensor (t:r) = [(y++x,w*v) |(x,v)<-tensor r, (y,w) <- t ]
 
@@ -107,13 +112,14 @@ creaInt = map makeAn. tensor. construct where
 
 -- Cup-Produkt in integraler Kohomologie
 cupInt :: AnBase -> AnBase -> [(AnBase,Int)]
-cupInt a b = [(s,toIntStrict z)| (s,z) <- y] where
+cupInt a b = [(s,toInt z)| (s,z) <- y] where
 	ia = intCrea a; ib = intCrea b
 	x = sparseNub [(e,v*w*fromIntegral z) | (p,v) <- ia, let m = multAn p, (q,w) <- ib, (e,z)<- m q] 
 	y = sparseNub [(s,v*fromIntegral w) | (e,v) <- x, (s,w) <- creaInt e]
 
 -- Fasst multiple Vorkommen in einer Sparse-Liste zusammen
-sparseNub = map (\g->(fst$head g, sum $map snd g)).groupBy ((.fst).(==).fst).sort
+sparseNub :: (Num a) => [(AnBase, a)] -> [(AnBase,a)] 
+sparseNub = map (\g->(fst$head g, sum $map snd g)).groupBy ((.fst).(==).fst). sortBy ((.fst).compare.fst)
 
 -- Produkt aller Klassen aus der Liste
 cupIntList :: [AnBase] -> [(AnBase,Int)]
@@ -122,63 +128,40 @@ cupIntList = makeInt. ci . cL where
 	cL (b:r) = x where
 		ib = intCrea b
 		x = sparseNub [(e,v*w*fromIntegral z) | (p,v) <- cL r, let m = multAn p, (q,w) <- ib, (e,z)<-m q]
-	makeInt l = [(e,toIntStrict z) | (e,z) <- l]
+	makeInt l = [(e,toInt z) | (e,z) <- l]
 	ci l = sparseNub [(s,v*fromIntegral w) | (e,v) <- l, (s,w) <- creaInt e]
 
+-- Degree of a base element of cohomology
+degHilbK3 :: AnBase -> Int
 degHilbK3 (lam,a) = 2*partDegree lam + sum [degK3 i | i<- a]
 
 -- Basis von Hilb^n(K3) vom Grad d 
+hilbBase :: Int -> Int -> [AnBase]
 hilbBase = memo2 hb where
 	hb n d = sort $map ((\(a,b)->(PartLambda a,b)).unzip) $ hilbOperators n d  
 
 -- Alle möglichen Kombinationen von Erzeugungsoperatoren von 
 -- Gewicht n und Grad d
+hilbOperators :: Int -> Int -> [[ (Int,Int) ]]
 hilbOperators = memo2 hb where 
-	hb 0 0 = [[]] --Leeres Operatorprodukt
+	hb 0 0 = [[]] -- empty product of operators
 	hb n d = if n<0 || odd d || d<0 then [] else 
 		nub $ map (Data.List.sortBy (flip compare)) $ f n d
 	f n d = [(nn,0):x | nn <-[1..n], x<-hilbOperators(n-nn)(d-2*nn+2)] ++
 		[(nn,a):x | nn<-[1..n::Int], a <-[1..22], x<-hilbOperators(n-nn)(d-2*nn)] ++
 		[(nn,23):x | nn <-[1..n], x<-hilbOperators(n-nn)(d-2*nn-2)] 
 
--- Verändert das Gewicht eines AnBase Indizes
-newWeight n (PartLambda l, a) = pq n (l++repeat 1,a++repeat 0) ([],[]) where
-	pq 0 (i:l,b:a) (accl,acca) = if i==1&&b==0 then 
-		Just (PartLambda $reverse accl, reverse acca) else Nothing
-	pq m (i:l,b:a) (accl,acca) = if i<=m then pq (m-i) (l,a) (i:accl,b:acca) else Nothing
-
 -- Hilfsfunktion: Filtert Erzeugerkompositionen
+subpart :: AnBase -> K3Domain -> PartitionLambda Int
 subpart (PartLambda pl,l) a = PartLambda $ sb pl l where
 	sb [] _ = []
 	sb pl [] = sb pl [0,0..]
 	sb (e:pl) (la:l) = if la == a then e: sb pl l else sb pl l
 
--- Wandelt ganze rationale Zahl in Int um
-toInt q = if n ==1 then z else 7777777 where (z,n) =(numerator q, denominator q)
-toIntStrict q = if n ==1 then z else error"not integral" where (z,n) =(numerator q, denominator q)
+-- converts from Rational to Int
+toInt :: Ratio Int -> Int
+toInt q = if n ==1 then z else error "not integral" where 
+	(z,n) =(numerator q, denominator q)
 
-
--- Schreibfunktionen, produzieren Dateien mit Multiplikationsmatrizen
-
-write22 n = writeFile ("GAP_Code/GAP_n="++show n++"_22.txt")  m where
-	m = "a:= [\n" ++ concat (intersperse",\n"[show$col x2 y2 |x2<-h2,y2<-h2,x2<=y2] ) ++"\n];;\n"
-	h2 = hilbBase n 2
-	col x2 y2 = dense (hilbBase n 4) $ cupInt x2 y2
-
-write24 n = writeFile ("GAP_Code/GAP_n="++show n++"_24.txt")  m where
-	m = "a:= [\n" ++ concat (intersperse",\n"[show$col y4 y2 |y4<-h4,y2<-h2] ) ++"\n];;\n"
-	h2 = hilbBase n 2; h4 = hilbBase n 4
-	col y4 y2 = dense (hilbBase n 6) $ cupInt y4 y2
-	
-write222 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3.txt")  m where
-	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) hSym) ++"\n];;\n"
-	h2 = hilbBase n 2; hSym = [[x2,y2,z2]|x2<-h2,y2<-h2,x2<=y2,z2<-h2,y2<=z2]
-	col = dense (hilbBase n 6). cupIntList
-
-
--- Macht aus einer Sparse-Liste eine Dense-Liste
-dense (p:o) (q:r) = if p==fst q then  snd q : dense o r else 0: dense o (q:r)
-dense o [] = zipWith const [0,0..] o
-dense [] _ = error "Falsch sortiert"
 
 
