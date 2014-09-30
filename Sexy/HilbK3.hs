@@ -6,16 +6,13 @@ module HilbK3 where
 
 import Data.Array
 import Data.MemoTrie
-import Elementary
 import K3
-import LinearAlgebra
 import Permutation
 import Partitions
 import Data.Permute hiding (sort,sortBy)
 import Data.List
 import qualified Data.IntMap as IntMap
 import qualified Data.Set as Set
-import ShowMatrix
 import SymmetricFunctions
 import Data.Ratio
 
