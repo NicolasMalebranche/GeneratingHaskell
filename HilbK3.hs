@@ -178,6 +178,12 @@ write222 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3.txt")  m where
 	h2 = hilbBase n 2; hSym = [[x2,y2,z2]|x2<-h2,y2<-h2,x2<=y2,z2<-h2,y2<=z2]
 	col = dense (hilbBase n 6). cupIntList
 
+writeUni n = writeFile ("GAP_Code/GAP_n="++show n++"_Uni.txt")  m where
+	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) hMid) ++"\n];;\n"
+	hMid = hilbBase n (2*n)
+	col yM = map (bil yM) hMid
+	bil x y = coeff $ cupInt x y
+	coeff [] = 0; coeff [(_,z)] = z 
 
 -- Macht aus einer Sparse-Liste eine Dense-Liste
 dense (p:o) (q:r) = if p==fst q then  snd q : dense o r else 0: dense o (q:r)
