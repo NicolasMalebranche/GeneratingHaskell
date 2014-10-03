@@ -96,7 +96,7 @@ multAn a = multb where
 		(l,k)= unzip$ sortBy (flip compare)$ map (\(c,k)->(length c,k)) sn
 	multb (pb,lb) = map ungroup$ groupBy ((.fst).(==).fst) $sort elems where
 		ungroup g@((an,_):_) = (an, m*(sum $ map snd g) )
-		bs = zip (cycles $ partPermute pb) lb
+		bs = zip (sortBy ((.length).flip compare.length) $cycles $ partPermute pb) lb
 		elems = [(toAn cs,v) | as <- asl, (cs,v) <- multSn as bs]
 
 -- integer base to ordinary base, see Q-W, Thm 1.1
