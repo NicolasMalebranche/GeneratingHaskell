@@ -11,6 +11,7 @@ import K3
 import LinearAlgebra
 import Permutation
 import Partitions
+import MatrixAlgorithms
 import Data.Permute hiding (sort,sortBy)
 import Data.List
 import qualified Data.IntMap as IntMap
@@ -178,11 +179,8 @@ write222 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3.txt")  m where
 	h2 = hilbBase n 2; hSym = [[x2,y2,z2]|x2<-h2,y2<-h2,x2<=y2,z2<-h2,y2<=z2]
 	col = dense (hilbBase n 6). cupIntList
 
-writeUni n = writeFile ("GAP_Code/GAP_n="++show n++"_Uni.txt")  m where
-	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) hMid) ++"\n];;\n"
-	hMid = hilbBase n (2*n)
-	col yM = map (bil yM) hMid
-	bil x y = coeff $ cupInt x y
+signatureHilb n = signature (hilbBase n (2*n)) b where
+	b i j = toInteger (coeff (cupInt i j)) % 1 
 	coeff [] = 0; coeff [(_,z)] = z 
 
 -- Macht aus einer Sparse-Liste eine Dense-Liste
