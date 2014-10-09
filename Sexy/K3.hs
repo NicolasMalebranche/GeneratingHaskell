@@ -93,7 +93,7 @@ bilK3inv ii jj = let
 	if (i >= 15) && (j<= 22) then inve8 ! ((i-14), (j-14))  else
 	0 
 
--- cup product with to factors
+-- cup product with two factors
 -- a_i * a_j = sum [cup k (i,j) * a_k | k<- rangeK3]
 cup :: K3Domain -> (K3Domain,K3Domain) -> Int
 cup = memo2 r where
@@ -104,7 +104,7 @@ cup = memo2 r where
 	r 23 (i,j) =  bilK3 i j
 	r _ _ = 0
 
--- indizes where the cup product does not vanish
+-- indices where the cup product does not vanish
 cupNonZeros :: [ (K3Domain,(K3Domain,K3Domain)) ]
 cupNonZeros = [ (k,(i,j)) | i<-rangeK3, j<-rangeK3, k<-rangeK3, cup k (i,j) /= 0]
 
