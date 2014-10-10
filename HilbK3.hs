@@ -180,8 +180,17 @@ write222 n = writeFile ("GAP_Code/GAP_n="++show n++"_Sym3.txt")  m where
 	col = dense (hilbBase n 6). cupIntList
 
 signatureHilb n = signature (hilbBase n (2*n)) b where
-	b i j = toInteger (coeff (cupInt i j)) % 1 
+	b = memo2 bb
+	bb i j = toInteger (coeff (cupInt i j)) % 1 
 	coeff [] = 0; coeff [(_,z)] = z 
+
+writeMag n = writeFile ("Mag"++show n++".txt") m where
+	m = concat ["<"++show i++","++show j++","++show z++">,\n" 
+		| (i,x)<-hB, (j,y)<-hB,let (ix,iy)=if i<j then (x,y) else (y,x),let z = b ix iy, z/=0] 
+	hB = zip [1..] $ hilbBase n (2*n)
+	b i j = coeff (cupInt i j) 
+	coeff [] = 0; coeff [(_,z)] = z 
+
 
 -- Macht aus einer Sparse-Liste eine Dense-Liste
 dense (p:o) (q:r) = if p==fst q then  snd q : dense o r else 0: dense o (q:r)
