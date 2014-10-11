@@ -3,7 +3,7 @@ module Signature where
 import Data.MemoTrie
 import LinearAlgebra
 import Data.Array.IO
-import Data.PSQueue
+import Data.PSQueue as PQ -- cabal install PSQueue-1.1
 import qualified Data.List.Ordered as Asc
 import qualified Data.IntMap as IM
 import System.IO.Unsafe
@@ -53,19 +53,44 @@ signature vs m = unsafePerformIO run where
 	run = do
 		ar <- if False then gg 1 else newListArray (1,length vs) $ map IM.fromList mvs
 		iter ar pqInit (0,0,0)
-	iter ar pq sig = if Data.PSQueue.null pq then return sig else do
+	iter ar pq sig = if PQ.null pq then return sig else do
 		(ps,npq) <- pivotStrategy ar pq
 		nnpq <- applyPivot ar npq ps
 		iter ar nnpq (incPivot sig ps)
 
 data Pivot a = Pi Int a | Bi Int Int a | Tri Int Int a a | Ignore
 
-pivotStrategy ar pq = undefined where
+pivotStrategy ar pq = do
+	(_,strat,npq) <- createStrat (minView pq) pq
+	return (strat,npq)
+	where
 	sparseLook i im = g $ IM.lookup i im where g Nothing = 0; g (Just x) = x
-	createStrat (Just (k :-> pr, pq)) = do
+	createStrat Nothing allpq = return (const True, undefined, undefined)
+	createStrat (Just (k :-> kp, pq)) allpq= do
 		kline <- readArray ar k
 		let diag = sparseLook k kline
-		if diag/=0 then return $ Pi k diag else undefined
+		if diag/=0 then return ((>)kp,Pi k diag, pq) else do
+		-- Wenn das Diagonalelement gleich 0 ist
+		(conseil,alterStrat,pq2) <- createStrat (minView pq) allpq
+		bestM <- minSearch allpq Nothing $ IM.toList kline 
+		if bestM==Nothing then return (const False,Ignore,pq) else do
+		let Just (mp,mdiag,m,mv) = bestM
+		let mstrat Nothing = Bi k m mv ;
+			mstrat (Just x) = if x==0 then Bi k m mv else Tri k m x mv
+		if conseil mp then 
+			return ((>=) mp, mstrat mdiag, delete m pq) else 
+			return (conseil,alterStrat,insert k mp pq2)
+	minSearch pq acc [] = return acc
+	minSearch pq acc ((j,jv):r) =  do
+			let mjp = PQ.lookup j pq 
+			if mjp == Nothing || jv==0 then minSearch pq acc r else do
+			let Just jp = mjp
+			jline <- readArray ar j
+			let jdiag = IM.lookup j jline
+			let np = if jdiag == Nothing then jp else jp+33456--kp 
+			if acc == Nothing then minSearch pq (Just (np,jdiag,j,jv)) r else do
+			let Just (mp,_,_,_) = acc
+			if np < mp then minSearch pq (Just (np,jdiag,j,jv)) r else minSearch pq acc r
 
 applyPivot ar pq = app where
 	subtract _ pqu [] = return pqu
