@@ -1,15 +1,15 @@
-module Signature where
+module Signature(
+	signature
+	) where
 
 import Data.MemoTrie
 import Data.Maybe
---import LinearAlgebra
 import Data.Array.IO
 import Data.PSQueue as PQ -- cabal install PSQueue-1.1
 import qualified Data.List.Ordered as Asc
 import qualified Data.IntMap as IM
 import qualified Data.List as List
 import System.IO.Unsafe
-import Debug.Trace
 
 gg _ = undefined :: IO (IOArray a b)
 signature vs m = unsafePerformIO run where
@@ -20,7 +20,7 @@ signature vs m = unsafePerformIO run where
 		iter ar pqInit (0,0,0)
 	iter ar pq sig = if PQ.null pq then return sig else do
 		(ps,npq) <- pivotStrategy ar pq 
-		nnpq <- trace (show ps) $ applyPivot ar npq ps
+		nnpq <- applyPivot ar npq ps
 		iter ar nnpq (incPivot sig ps)
 
 data Pivot a = Pi Int a | Bi Int Int a | Ignore deriving (Show)
@@ -59,8 +59,7 @@ pivotStrategy ar pq  = do
 	diagFilter (i:r) = do 
 		iline <- readArray ar i 
 		dfr <- diagFilter r
-		let diag = IM.lookup i iline
-		return $ if isNothing diag then i:dfr else dfr
+		return $ if IM.member i iline then dfr else i:dfr
 
 applyPivot ar pq = app where
 	subtract _ pqu [] = return pqu
@@ -78,8 +77,11 @@ applyPivot ar pq = app where
 	app (Bi i j ndia) = do
 		iline <- readArray ar i
 		jline <- readArray ar j
-		let line p = IM.unionWith (+) (IM.map (*negate(jline IM.!p/ndia)) iline) 
-			(IM.map (*negate(iline IM.!p/ndia)) jline)
+		let line p = case (IM.lookup p jline,IM.lookup p iline) of
+			(Just jx,Just ix) -> IM.unionWith (+) (IM.map (*negate(jx/ndia)) iline)
+				(IM.map (*negate(ix/ndia)) jline)
+			(Nothing,Just ix) -> IM.map (*negate(ix/ndia)) jline
+			(Just jx,Nothing) -> IM.map (*negate(jx/ndia)) iline
 		subtract line pq $ Asc.union (IM.keys iline) (IM.keys jline) 
 	app Ignore = return pq
 
