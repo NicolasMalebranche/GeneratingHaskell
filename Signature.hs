@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Signature(
 	signature
 	) where
@@ -11,7 +12,7 @@ import qualified Data.IntMap as IM
 import qualified Data.List as List
 import System.IO.Unsafe
 
-gg _ = undefined :: IO (IOArray a b)
+gg _ = undefined :: IO (IOArray Int b)
 signature vs m = unsafePerformIO run where
 	mvs = map m vs
 	pqInit = fromList $ zipWith ( :-> ) [1..] $ map length mvs
@@ -20,15 +21,21 @@ signature vs m = unsafePerformIO run where
 		iter ar pqInit (0,0,0)
 	iter ar pq sig = if PQ.null pq then return sig else do
 		(ps,npq) <- pivotStrategy ar pq 
+		pr ps npq
 		nnpq <- applyPivot ar npq ps
+		pr ps nnpq
 		iter ar nnpq (incPivot sig ps)
+	pr (Pi i _) pq = print $ (findMin pq, PQ.lookup i pq)
+	pr _ _ = return ()
 
 data Pivot a = Pi Int a | Bi Int Int a | Ignore deriving (Show)
 
+-- Eingabe: fun :: Index -> (Priorität, was anderes) und Queue
+-- Ausgabe (neue Queue, min Index, was anderes am neuen Index)
 trueMin fun pq = do 
-		(fk,other) <- fun k  
-		mmin k (fk,other) (insert k fk pq) where
-	Just (k :-> kp) = findMin pq
+		(fk,other) <- fun kk  
+		mmin kk (fk,other) (insert kk fk pq) where
+	Just (kk :-> kkp) = findMin pq
 	mmin m (fm,om) pq = do
 		let Just (k:->kp) = findMin pq
 		if fm<=kp then return (pq,m,om) else do
@@ -36,8 +43,12 @@ trueMin fun pq = do
 		if fm<=fk then mmin m (fm,om) (insert k fk pq) else
 			mmin k (fk,ok) (insert k fk pq)
 
+-- Eingabe: Array und Queue von Indizes
+-- Ausgabe: Strategie und aktualisierte Queue
+-- Nur Lesezugriff auf das Array
 pivotStrategy ar pq  = do
 	(npq,k,strat) <- trueMin findStrat pq 
+	print strat
 	return (strat, rem strat (delete k npq)) where
 	rem (Bi _ j _) = delete j
 	rem _ = id
@@ -61,19 +72,27 @@ pivotStrategy ar pq  = do
 		dfr <- diagFilter r
 		return $ if IM.member i iline then dfr else i:dfr
 
-applyPivot ar pq = app where
-	subtract _ pqu [] = return pqu
-	subtract line pqu (i:r) = do
+-- Schreibt das Array gemäß den Pivot-Vorgaben
+applyPivot ar pq strat = app strat where
+	addLine line = al where
+		al [] = return () 
+		al (i:r) = do
+			ae <- readArray ar i
+			writeArray ar i $ IM.unionWith (+) ae $ line i
+	killCols els mpq [] = return pq 
+	killCols els mpq (i:rlist) = do
 		ae <- readArray ar i
-		let newline = IM.filterWithKey (\k v -> v/=0) $ 
-			IM.unionWith (+) ae $ line i
-		let npqu = update (\_-> Just $ IM.size newline) i pqu
-		writeArray ar i newline
-		subtract line npqu r
+		let ce = IM.filter (\x -> abs x > 0.5^16) ae
+		let e = List.foldr IM.delete ce els
+		writeArray ar i e
+		let npq = insert i (IM.size e) mpq
+		killCols els npq rlist
 	app (Pi i diag) = do
 		iline <- readArray ar i
 		let line p = IM.map (*negate (iline IM.!p/diag)) iline
-		subtract line pq $ IM.keys iline
+		let list =  filter (\k-> k/=i) $ IM.keys iline
+		addLine line list
+		killCols [i] pq list
 	app (Bi i j ndia) = do
 		iline <- readArray ar i
 		jline <- readArray ar j
@@ -82,7 +101,9 @@ applyPivot ar pq = app where
 				(IM.map (*negate(ix/ndia)) jline)
 			(Nothing,Just ix) -> IM.map (*negate(ix/ndia)) jline
 			(Just jx,Nothing) -> IM.map (*negate(jx/ndia)) iline
-		subtract line pq $ Asc.union (IM.keys iline) (IM.keys jline) 
+		let list = filter (\k->k/=i&&k/=j) $ Asc.union (IM.keys iline)(IM.keys jline)
+		addLine line list
+		killCols [i,j] pq list
 	app Ignore = return pq
 
 incPivot (a,b,c) = i where
