@@ -131,6 +131,12 @@ cupIntList = makeInt. ci . cL where
 
 degHilbK3 (lam,a) = 2*partDegree lam + sum [degK3 i | i<- a]
 
+-- Integral fuer Hilbertschemata
+hilbT :: AnBase -> Int
+hilbT (PartLambda l, kl) = foldr nn 1 $ zip l kl where
+	nn (1,23) acc = negate acc
+	nn _ _ = 0
+
 -- Basis von Hilb^n(K3) vom Grad d 
 hilbBase = memo2 hb where
 	hb n d = sort $map ((\(a,b)->(PartLambda a,b)).unzip) $ hilbOperators n d  
@@ -185,11 +191,11 @@ signatureHilb n = signature (hilbBase n (2*n)) b where
 	coeff [] = 0; coeff [(_,z)] = z 
 
 writeMag n = writeFile ("Mag"++show n++".txt") m where
-	m = concat ["<"++show i++","++show j++","++show z++">,\n" 
+	m = concat [show i++" "++show j++" "++show z++"\n" 
 		| (i,x)<-hB, (j,y)<-hB,let (ix,iy)=if i<j then (x,y) else (y,x),let z = b ix iy, z/=0] 
 	hB = zip [1..] $ hilbBase n (2*n)
 	b i j = coeff (cupInt i j) 
-	coeff [] = 0; coeff [(_,z)] = z 
+	coeff [] = 0; coeff [(p,z)] = hilbT p * z
 
 
 -- Macht aus einer Sparse-Liste eine Dense-Liste

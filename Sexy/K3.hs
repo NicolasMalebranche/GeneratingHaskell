@@ -119,7 +119,7 @@ cupLSparse = cu . filter (/=oneK3) where
 -- Del a_k = sum [cupAd (i,j) k * a_i `tensor` a_k | i<-rangeK3, j<-rangeK3]
 cupAd :: (K3Domain,K3Domain) -> K3Domain -> Int
 cupAd = memo2 ad where 
-	ad (i,j) k = sum [bilK3inv i ii * bilK3inv j jj 
+	ad (i,j) k = negate $ sum [bilK3inv i ii * bilK3inv j jj 
 		* cup kk (ii,jj) * bilK3 kk k |(kk,(ii,jj)) <- cupNonZeros ]
 
 -- n-fold comultiplication

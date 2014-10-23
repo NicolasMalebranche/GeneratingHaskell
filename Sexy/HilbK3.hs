@@ -157,6 +157,12 @@ cupIntList = makeInt. ci . cL where
 degHilbK3 :: AnBase -> Int
 degHilbK3 (lam,a) = 2*partDegree lam + sum [degK3 i | i<- a]
 
+-- Integral for Hilbert schemes
+hilbT :: AnBase -> Int
+hilbT (PartLambda l, kl) = foldr nn 1 $ zip l kl where
+	nn (1,23) acc = negate acc
+	nn _ _ = 0
+
 -- base elements in Hilb^n(K3) of degree d 
 hilbBase :: Int -> Int -> [AnBase]
 hilbBase = memo2 hb where

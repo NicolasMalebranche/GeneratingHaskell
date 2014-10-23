@@ -40,7 +40,7 @@ bilK3_func ii jj = let
 	u 1 1 = 0
 	u 2 2 = 0
 	u i j = undefined	
-	in
+	in 
 	if (i < 0) || (j > 23) then undefined else
 	if (i == 0) then delta j 23 else
 	if (i >= 1) && (j <= 2) then u i j else
@@ -58,7 +58,7 @@ bilK3inv_func ii jj = let
 	u 1 1 = 0
 	u 2 2 = 0
 	u i j = undefined	
-	in
+	in 
 	if (i < 0) || (j > 23) then undefined else
 	if (i == 0) then delta j 23 else
 	if (i >= 1) && (j <= 2) then u i j else
@@ -74,7 +74,7 @@ cup = memo2 r where
 	r k (i,0) = delta k i
 	r _ (i,23) = 0
 	r _ (23,i) = 0
-	r 23 (i,j) =  bilK3_func i j
+	r 23 (i,j) = bilK3_func i j
 	r _ _ = 0
 
 -- Indizes, an denen das Cup Produkt nicht null ist
@@ -103,7 +103,7 @@ cupLSparse = cu . filter (/=0) where
 
 -- Adjungiertes zum Cup Produkt
 cupAd = memo2 ad where 
-	ad (i,j) k = sum [bilK3inv_func i ii * bilK3inv_func j jj 
+	ad (i,j) k = negate $ sum [bilK3inv_func i ii * bilK3inv_func j jj 
 		* cup kk (ii,jj) * bilK3_func kk k |(kk,(ii,jj)) <- cupNonZeros ]
 
 -- Indizes, an denen das adjungierte Cup Produkt nicht null ist
