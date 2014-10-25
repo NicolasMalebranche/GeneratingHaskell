@@ -33,9 +33,9 @@ data Pivot a = Pi Int a | Bi Int Int a | Ignore deriving (Show)
 -- Eingabe: fun :: Index -> (Priorität, was anderes) und Queue
 -- Ausgabe (neue Queue, min Index, was anderes am neuen Index)
 trueMin fun pq = do 
+		let Just (kk:->kkp) = findMin pq
 		(fk,other) <- fun kk  
 		mmin kk (fk,other) (insert kk fk pq) where
-	Just (kk :-> kkp) = findMin pq
 	mmin m (fm,om) pq = do
 		let Just (k:->kp) = findMin pq
 		if fm<=kp then return (pq,m,om) else do
@@ -60,12 +60,12 @@ pivotStrategy ar pq  = do
 			if isNothing diag then pivot2 j jline else 
 				return (jp,Pi j $ fromJust diag) 
 	pivot2 j jline = do 
-		diags <- diagFilter $ map fst $ IM.toList jline
+		diags <- diagFilter $ IM.keys jline
 		let (vm,m) = minimum $ zip (map val diags) diags
 		if List.null diags then 
 			return (val(fst$IM.findMin jline)+1,undefined) else 
 			return (val m, Bi j m $ jline IM.! m)
-	val i = fromJust $ PQ.lookup i pq
+	val i = fJ $ PQ.lookup i pq where fJ (Just x) =x; fJ Nothing = error $ "Arrgh " ++show i
 	diagFilter [] = return []
 	diagFilter (i:r) = do 
 		iline <- readArray ar i 
@@ -79,7 +79,7 @@ applyPivot ar pq strat = app strat where
 		al (i:r) = do
 			ae <- readArray ar i
 			writeArray ar i $ IM.unionWith (+) ae $ line i
-	killCols els mpq [] = return pq 
+	killCols els mpq [] = return mpq
 	killCols els mpq (i:rlist) = do
 		ae <- readArray ar i
 		let ce = IM.filter (\x -> abs x > 0.5^16) ae
