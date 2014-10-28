@@ -7,6 +7,18 @@ import Data.Maybe
 import qualified Data.List 
 import Data.MemoTrie
 
+-- Partitionszahlen, via Pentagonalzahltheorem
+partNumber :: Int -> Integer
+partNumber = memo pRec where
+	pRec 0 = 1
+	pRec n = pp pent 1 0 where
+		pp (p:q:pr) k acc = if n < p then acc else pp pr (k+2) $
+			acc + partNumber (n-p) + partNumber (n-p-k) - 
+			partNumber (n-q) - partNumber (n-q-k-1)
+	pent = 1 : zipWith (+) [4,7..] pent
+
+-----------------------------------------------------------------------------------------
+
 class (Eq a, HasTrie a) => Partition a where
 	-- Länge einer Partition
 	partLength :: Integral i => a -> i 
