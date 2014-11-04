@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor #-}
+{-# LANGUAGE MultiParamTypeClasses, DeriveFunctor, FlexibleInstances #-}
 module Polynomial where
 
 import PowerSeries
@@ -55,14 +55,20 @@ polyDiff p = Polynomial {deg = deg p - 1, ser = seriesDiff $ ser p}
 -- Setzt ein Argument ein
 polyEval p x = eval 0 1 $ ser p where
 	eval i xi (Elem a ar) = if i>deg p then 0 else xi*a + eval (i+1) (xi*x) ar
+instance Num a => Composeable (Polynomial a) a a where
+	(°) = polyEval
 
 -- Setzt eine Potenzreihe ein
 seriesInPoly p (Elem c r) = Elem (cc + polyEval p c) cr where
 	co rpower (Elem a ar) = fmap (a*) rpower + Elem 0 (co (rpower*r) ar)
 	Elem cc cr = co 1 $ ser p
+instance Num a => Composeable (Polynomial a)(PowerSeries a)(PowerSeries a) where
+	(°) = seriesInPoly
 
 -- Setzt ein anderes Polynom ein
 polyComp p q = Polynomial {deg = deg p * deg q, ser = seriesInPoly p $ ser q} 
+instance Num a => Composeable (Polynomial a)(Polynomial a)(Polynomial a) where
+	(°) = polyComp
 
 -- p(x) -> x^d p(1/x). Achtung: nimmt den gespeicherten Grad. Der tatsächliche
 -- Grad kann kleiner sein. In diesem Fall polyClean vorschalten!

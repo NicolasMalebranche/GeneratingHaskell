@@ -1,7 +1,11 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, FunctionalDependencies #-}
 module PowerSeries where
 
 import Data.List
+
+infixl 5 °
+class Composeable a b c | a b -> c where
+	(°) :: a -> b -> c
 
 data PowerSeries a = Elem a (PowerSeries a) 
 	deriving (Functor)
@@ -85,6 +89,9 @@ instance (Fractional a) => Fractional (PowerSeries a) where
 		invirr = fmap negate $ seriesMult (fmap (/c) r) inv
 		in inv
 	fromRational a = Elem (fromRational a) (nullSeries ())
+
+instance (Num a, Eq a) => Composeable (PowerSeries a)(PowerSeries a)(PowerSeries a) where
+	(°) = seriesComp
 
 seriesShiftedSum [] = 0
 seriesShiftedSum (Elem a ar:r) = Elem a $ ar + seriesShiftedSum r
