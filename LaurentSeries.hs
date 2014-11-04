@@ -17,6 +17,10 @@ laurentWritePrec = unsafePerformIO . writeIORef laurentPrecRef
 data LaurentSeries a = Lau Integer (PowerSeries a)
 	deriving (Functor)
 
+-- das Monom z
+z :: (Num a) => LaurentSeries a
+z = Lau 1 $ Elem 1 0
+
 -- Addition zweier Laurentreihen
 laurentAdd (Lau r p) (Lau r' p') = add where 
 	add = if r<=r' then Lau r (p + seriesShift (r'-r) p') else Lau r' (seriesShift (r-r') p + p') 
@@ -105,7 +109,7 @@ instance (Eq a, Num a) => Eq (LaurentSeries a) where
 instance (Num a, Show a, Ord a) => Show (LaurentSeries a) where
 	show (Lau hr r) = let
 		maxdeg = 20
-		xpower i = if i == 0 then "" else if i== 1 then "x" else "x^" ++ show i
+		xpower i = if i == 0 then "" else if i== 1 then "z" else "z^" ++ show i
 		showelem i a = if a == 0 then "" else showsig ++ showa ++ xpower i where
 			showsig = if a <0 then " - " else " + "
 			showa = if abs a == 1 then if i == 0 then "1" else "" else show (abs a)

@@ -6,6 +6,10 @@ import Data.List
 data PowerSeries a = Elem a (PowerSeries a) 
 	deriving (Functor)
 
+-- das Monom t
+t :: (Num a) => PowerSeries a
+t = Elem 0 $ Elem 1 0
+
 nullSeries _ = nll where
 	nll = Elem 0 nll
 
@@ -125,7 +129,7 @@ sqroot (Elem c s) = let
 instance (Num a, Show a, Ord a) => Show (PowerSeries a) where
 	show r = let
 		maxdeg = 20
-		xpower i = if i == 0 then "" else if i== 1 then "x" else "x^" ++ show i
+		xpower i = if i == 0 then "" else if i== 1 then "t" else "t^" ++ show i
 		showelem i a = if a == 0 then "" else showsig ++ showa ++ xpower i where
 			showsig = if a <0 then " - " else " + "
 			showa = if abs a == 1 then if i == 0 then "1" else "" else show (abs a)
