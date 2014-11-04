@@ -82,6 +82,15 @@ instance (Fractional a) => Fractional (PowerSeries a) where
 		in inv
 	fromRational a = Elem (fromRational a) (nullSeries ())
 
+seriesShiftedSum [] = 0
+seriesShiftedSum (Elem a ar:r) = Elem a $ ar + seriesShiftedSum r
+
+-- seriesShiftedProduct [a,b,..] = (1+a*x)(1+b*x^2)..
+seriesShiftedProduct = ssp 1 1 1 where
+	ssp acc t n [] = acc
+	ssp (Elem a acc) t n (s:r) = 
+		Elem a $ ssp (acc+st) (t+seriesShift n st) (n+1) r where st = s*t
+
 expSeries ::  Fractional a => PowerSeries a
 cosSeries ::  Fractional a => PowerSeries a
 sinSeries ::  Fractional a => PowerSeries a
