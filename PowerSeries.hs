@@ -45,9 +45,12 @@ seriesInv (Elem c r) = let
 	invirr = fmap negate $ seriesMult r inv
 	in if c == 1 then inv else error "Constant coefficient not 1"
 
-seriesComp a (Elem c r) = let
+-- Setzt das x-Fache einer Reihe ein
+seriesCompShift a r = co 1 a where
 	co rpower (Elem a ar) = fmap (a*) rpower + Elem 0 (co (rpower*r) ar)
-	in if c==0 then co 1 a else error "Constant coefficient not 0"
+
+seriesComp a (Elem c r) = if c==0 then seriesCompShift a r else 
+	error "Constant coefficient not 0"
 
 seriesCompInv (Elem c (Elem l s)) = let
 	b = Elem 1 r
@@ -102,35 +105,71 @@ seriesShiftedProduct = ssp 1 1 1 where
 	ssp (Elem a acc) t n (s:r) = 
 		Elem a $ ssp (acc+st) (t+seriesShift n st) (n+1) r where st = s*t
 
-expSeries ::  Fractional a => PowerSeries a
-cosSeries ::  Fractional a => PowerSeries a
-sinSeries ::  Fractional a => PowerSeries a
-arcsinSeries ::  Fractional a => PowerSeries a
-expSeries = expmake 1 1 where
+-- Ganzzahlige bekannte Reihen
+seriesCatalan :: Num a => PowerSeries a
+seriesCatalan = Elem 1 $ seriesCatalan^2
+
+seriesGeo :: Num a => PowerSeries a
+seriesGeo = Elem 1 $ seriesGeo
+
+-- Rationale bekannte Reihen
+seriesExp ::  Fractional a => PowerSeries a
+seriesCos ::  Fractional a => PowerSeries a
+seriesSin ::  Fractional a => PowerSeries a
+seriesAsin ::  Fractional a => PowerSeries a
+seriesAtan ::  Fractional a => PowerSeries a
+seriesLog :: Fractional a => PowerSeries a
+
+seriesExp = expmake 1 1 where
 	expmake i k = Elem k $ expmake (i+1) (k/i)
 
-cosSeries = make 1 1 where
+seriesCos = make 1 1 where
 	make i k = Elem k $ Elem 0 $ make (i+2) (negate k/(i*i + i))
 	
-sinSeries = Elem 0 $ make 2 1 where
+seriesSin = Elem 0 $ make 2 1 where
 	make i k = Elem k $ Elem 0 $ make (i+2) (negate k/(i*i + i))
 
-arcsinSeries = arcsinMake 1 1 where
+seriesAsin = arcsinMake 1 1 where
 	arcsinMake i k = Elem 0 $ Elem (k/i) $ arcsinMake (i+2) (k*i/(i+1))
 
-catalanSeries :: Num a => PowerSeries a
-geoSeries :: Num a => PowerSeries a
-catalanSeries = Elem 1 $ catalanSeries^2
-geoSeries = Elem 1 $ geoSeries
+seriesAtan = atanMake 1 where
+	atanMake i = Elem 0 $ Elem (1/i) $ Elem 0 $ Elem (-1/(i+2)) $ atanMake (i+4)
+
+seriesLog = Elem 0 $ logmake 1 where 
+	logmake i = Elem (1/i) $ Elem (-1/(i+1)) $ logmake (i+2)
+
+seriesSqrt (Elem c s) = let
+	r = fmap (/2) $ s - Elem 0 (r^2)
+	rt = Elem 1 r
+	in if c == 1 then rt else error "Constant Coefficient not 1"
+
+instance Floating a => Floating (PowerSeries a) where
+	pi = Elem pi 0
+	exp (Elem c r) = fmap (*exp c) $ seriesCompShift seriesExp r
+	log (Elem c r) = Elem (log c) x where
+		Elem _ x = seriesCompShift seriesLog $ fmap (/c) r
+	sin (Elem c r) = fmap (*sin c) (seriesCompShift seriesCos r) + 
+		fmap (*cos c) (seriesCompShift seriesSin r)
+	cos (Elem c r) = fmap (*cos c) (seriesCompShift seriesCos r) - 
+		fmap (*sin c) (seriesCompShift seriesSin r) 
+	sinh x = fmap (/2) $ exp x - exp (negate x)
+	cosh x = fmap (/2) $ exp x + exp (negate x)
+	asin x = atan $ x / sqrt (1-x^2)
+	acos x = Elem (pi/2 - c) r where Elem c r = asin x
+	atan (Elem c r) = Elem (atan c) x where
+		Elem _ x = seriesCompShift seriesAtan $ r / (Elem (1+c^2) $ fmap (c*) r)
+	asinh x = log $ x + sqrt (x^2+1)
+	acosh x = log $ x + sqrt (x^2-1)
+	atanh x = fmap (/2) $ log $ (1+x)/(1-x)
+	sqrt (Elem c r) = fmap (* sqrt c) $ Elem 1 x where
+		rr = fmap (/c) r
+		x = fmap (/2) $ rr - Elem 0 (x^2)
+	
 
 tsch 0 = 1
 tsch 1 = seriesGenerating [0,2]
 tsch n = tsch 1* tsch(n-1) - tsch (n-2)
 
-sqroot (Elem c s) = let
-	r = fmap (/2) $ s - Elem 0 (r^2)
-	rt = Elem 1 r
-	in if c == 1 then rt else error "Constant Coefficient not 1"
 
 
 instance (Show a) => Show (PowerSeries a) where
