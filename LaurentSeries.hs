@@ -106,13 +106,15 @@ instance (Eq a, Num a) => Eq (LaurentSeries a) where
 		Nothing -> True
 		Just _ -> False
 
-instance (Num a, Show a, Ord a) => Show (LaurentSeries a) where
+instance (Show a) => Show (LaurentSeries a) where
 	show (Lau hr r) = let
 		maxdeg = 20
 		xpower i = if i == 0 then "" else if i== 1 then "z" else "z^" ++ show i
-		showelem i a = if a == 0 then "" else showsig ++ showa ++ xpower i where
-			showsig = if a <0 then " - " else " + "
-			showa = if abs a == 1 then if i == 0 then "1" else "" else show (abs a)
+		showelem i a = if elem sa ["0","0.0","-0.0"] then "" else showsig ++ xpower i where
+			sa = show a
+			ska = if elem ' ' sa || elem '+' sa then "("++sa++")" else sa 
+			showsig = if head ska == '-' then " - "++shown (tail ska) else " + "++shown ska
+			shown a = if a=="1" || a=="1.0" then if i == 0 then "1" else "" else a
 		s i (Elem a r) = if i+hr == maxdeg then " + O(" ++ xpower maxdeg ++ ")" else
 			showelem (i+hr) a ++ s (i+1) r
 		string = s 0 r 

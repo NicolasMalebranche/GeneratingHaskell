@@ -109,12 +109,14 @@ instance (Eq a) => Eq (Polynomial a) where
 		isEq i (Elem a ar) (Elem b br) = 
 			if i > bound then True else a==b && isEq (i+1) ar br
 
-instance (Num a, Show a, Ord a) => Show (Polynomial a) where
+instance (Show a) => Show (Polynomial a) where
 	show p = let
 		xpower i = if i == 0 then "" else if i== 1 then "x" else "x^" ++ show i
-		showelem i a = if a == 0 then "" else showsig ++ showa ++ xpower i where
-			showsig = if a <0 then " - " else " + "
-			showa = if abs a == 1 then if i == 0 then "1" else "" else show (abs a)
+		showelem i a = if elem sa ["0","0.0","-0.0"] then "" else showsig ++ xpower i where
+			sa = show a
+			ska = if elem ' ' sa || elem '+' sa then "("++sa++")" else sa 
+			showsig = if head ska == '-' then " - "++shown (tail ska) else " + "++shown ska
+			shown a = if a=="1" || a=="1.0" then if i == 0 then "1" else "" else a
 		s i (Elem a r) = if i > deg p then "" else
 			showelem i a ++ s (i+1) r
 		string = s 0 (ser p) 
