@@ -120,22 +120,22 @@ seriesAsin ::  Fractional a => PowerSeries a
 seriesAtan ::  Fractional a => PowerSeries a
 seriesLog :: Fractional a => PowerSeries a
 
-seriesExp = expmake 1 1 where
+seriesExp = fmap fromRational $ expmake 1 1 where
 	expmake i k = Elem k $ expmake (i+1) (k/i)
 
-seriesCos = make 1 1 where
+seriesCos = fmap fromRational $ make 1 1 where
 	make i k = Elem k $ Elem 0 $ make (i+2) (negate k/(i*i + i))
 	
-seriesSin = Elem 0 $ make 2 1 where
+seriesSin = fmap fromRational $ Elem 0 $ make 2 1 where
 	make i k = Elem k $ Elem 0 $ make (i+2) (negate k/(i*i + i))
 
-seriesAsin = arcsinMake 1 1 where
+seriesAsin = fmap fromRational $ arcsinMake 1 1 where
 	arcsinMake i k = Elem 0 $ Elem (k/i) $ arcsinMake (i+2) (k*i/(i+1))
 
-seriesAtan = atanMake 1 where
+seriesAtan = fmap fromRational $ atanMake 1 where
 	atanMake i = Elem 0 $ Elem (1/i) $ Elem 0 $ Elem (-1/(i+2)) $ atanMake (i+4)
 
-seriesLog = Elem 0 $ logmake 1 where 
+seriesLog = fmap fromRational $ Elem 0 $ logmake 1 where 
 	logmake i = Elem (1/i) $ Elem (-1/(i+1)) $ logmake (i+2)
 
 seriesSqrt (Elem c s) = let
