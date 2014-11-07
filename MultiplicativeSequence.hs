@@ -10,6 +10,9 @@ import PowerSeries
 chern :: PowerSeries Rational
 chern = seriesGenerating [1,1]
 
+pontr :: PowerSeries Rational
+pontr = seriesGenerating [1,0,1]
+
 segre :: PowerSeries Rational
 segre = seriesGenerating $ repeat 1
 
@@ -33,7 +36,7 @@ instance (Fractional a,Eq a, Partition p,Ord p) =>
 	fromRational r = InfPol [(partEmpty,fromRational r)]
 	(/) = undefined
 
-linearTrafo (Elem a x) z@(Elem b y) = let q = a/b in 
+linearTrafo (Elem a x) z@(Elem b y) = let q = if a==0 then 0 else a/b in 
 	q : linearTrafo (x-fmap (*q) y) (seriesDiff z)
 
 applyTrafo (q:p) z = let Elem a x = fmap (*q) z in
