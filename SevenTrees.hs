@@ -6,7 +6,7 @@ import System.Random
 -- http://www.math.lsa.umich.edu/~ablass/7trees.pdf
 
 -- Binary Tree
-data T a = N (T a) (T a) | L deriving (Show,Eq)
+data T = N T T | L deriving (Show,Eq)
 
 -- Interpretiert Liste als KlammerFolge [[[a,b],c],...]
 treeFromList (a:r) = foldl N a r
