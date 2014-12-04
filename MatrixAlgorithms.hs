@@ -24,6 +24,13 @@ berkowitz vs m = let
 	pn = p n
 	in [pn i 0 | i <-[0..n]]
 
+-- Berechnet die adjunkte Matrix und die Determinante mit
+-- dem Berkowitz-Algorithmus. Die Inverse ist Adjunkte/Det.
+adjugate vs m = (memo2 adj, det) where 
+	det:char = reverse $ berkowitz vs m
+	mpowers = m : map (mM vs m) mpowers
+	adj i j = negate $ sum [c * mp i j | (c,mp) <- zip char (delta:mpowers)]
+
 -- Invertiert untere Dreiecksmatrix
 invertLowerDiag vs a = ild where
 	ild = memo2 inv
