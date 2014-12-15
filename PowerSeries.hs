@@ -66,8 +66,8 @@ seriesDiff (Elem s sr) = let
 seriesCompNegate (Elem s1 (Elem s2 s)) = Elem s1 $ Elem (negate s2) $ seriesCompNegate s
 
 -- Multipliziert mit x^n. Falls n<0, killt die Terme mit negativen Exponenten.
-seriesShift n (Elem a ar) = if n < 0 then seriesShift (n+1) ar else
-	if n == 0 then Elem a ar else seriesShift (n-1) $ Elem 0 $ Elem a ar 
+seriesShift n s@(Elem _ ar) = if n < 0 then seriesShift (n+1) ar else
+	if n == 0 then s else Elem 0 $ seriesShift (n-1) s
 
 -- Schneidet oben ab. Reihe wird Polynom vom Grad n-1
 seriesCutDegree n = ct 0 where 
