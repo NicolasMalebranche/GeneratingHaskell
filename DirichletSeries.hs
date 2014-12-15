@@ -7,14 +7,11 @@ import Data.MemoTrie
 data DirichletSeries a = Dirch {dirchCoeff :: Int -> a} deriving Functor
 
 factorizations =  f where
-	f :: Int -> [(Int,Int)]
-	f 1 = [(1,1)]
-	f 2 = [(1,2),(2,1)]
-	f 6 = [(1,6),(2,3),(3,2),(6,1)]
-	f n =  half ++ root ++ map (\(a,b)->(b,a)) half where
+	f n = half ++ root ++ map (\(a,b)->(b,a)) half where
 		sq = round $ sqrt $ fromIntegral n
+		sq2 = if sq^2 < n then sq else sq-1
 		root = if sq^2 == n then [(sq,sq)] else []
-		half = [(i,d)| i <- [1..sq-1], let (d,m) = divMod n i, m==0]
+		half = [(i,d)| i <- [1..sq2], let (d,m) = divMod n i, m==0]
 
 -- Dirichlet Konvolution
 dirchConvolution f g n = sum [f d * g k | (d,k) <- factorizations n]
@@ -24,6 +21,18 @@ dirchInverseConst f = mi where
 	mi = memo i
 	i 1 = 1
 	i n = negate $ sum [f d * mi k | (d,k) <- tail $ factorizations n]
+
+-- Teilt g durch f. Nimmt an, f 0 = 1
+dirchDivConst g f = mi where
+	mi = memo i
+	i 1 = g 1
+	i n = g n - sum [f d * mi k | (d,k) <- tail $ factorizations n]
+
+-- Eulersche phi-Funktion
+eulerphi = dirchDivConst id $ const 1
+
+-- Moebius-Funktion
+moebius = dirchInverseConst $ const 1
 
 -- Differential einer Dirichlet Reihe
 dirchDiff (Dirch f) = Dirch $ \ n -> f n * log (fromIntegral n)
