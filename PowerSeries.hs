@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, FunctionalDependencies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, FunctionalDependencies, MultiParamTypeClasses #-}
 module PowerSeries where
 
 import Data.List
