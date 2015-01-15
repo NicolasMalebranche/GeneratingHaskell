@@ -40,9 +40,20 @@ class (Eq a, HasTrie a) => Partition a where
 		make l (m:r) = l : make (l-m) r
 		make _ [] = []
 		res (PartAlpha r) = partFromLambda $ PartLambda $ make (sum r) r
-	-- Um 1 reduzierte Partition
-	partReduce :: a -> a
+	-- Um die linke Spalte reduzierte Partition
+	partReduceLeft :: a -> a
+	-- Um die obere Zeile reduzierte Partition	
+	partReduceTop :: a -> a
 	
+	-- Hakenlänge 
+	partHookLength :: (Int,Int) -> a -> Int
+
+	-- (vorspringende) Ecken
+	partCorners :: a -> [(Int,Int)]
+
+	-- Dominiert das erste Argument das zweite? (Ergibt Partialordnung)
+	partDominates :: a -> a -> Bool
+
 	-- Nächste Partition
 	partSucc :: a -> a
 	
@@ -104,19 +115,18 @@ instance Partition PartitionAlpha where
 		f i (m:r) = i : f i ((m-1):r)
 	partFromLambda = lambdaToAlpha
 	partAllPerms = partAllPerms . partAsLambda
-	partSucc (PartAlpha a) = PartAlpha $ find 0 1 a where
-		find v i [] = [v+1]
-		find v i (0:r) = find v (i+1) r
-		find 0 i (1:r) = find i (i+1) r
-		find 0 1 (k:r) = k-2 : augment r
-		find 0 i (k:r) = construct 1 [(i-1,1),(i,k-2)] ++ augment r
-		find 1 i (k:r) = construct 1 [(i,k-1)] ++ augment r
-		find v i (k:r) = construct 1 [(v-1,1),(i,k-1)] ++ augment r
-		augment [] = [1]
-		augment (a:r) = a+1:r
-		construct _ [] = []
-		construct i l@((j,v):r)= if i==j then v:construct(i+1)r else 0:construct (i+1) l
-	partReduce (PartAlpha (a:r)) = PartAlpha r
+	partSucc (PartAlpha a) = PartAlpha $ mys 0 1 a where
+		mys s i [] = if s<i then [s+1] else (s-i):[0|_<-[3..i]]++[1]
+		mys s i (a:l) = if s<i then  mys (s+i*a) (i+1) l else (s-i):[0|_<-[3..i]]++(a+1):l
+	partReduceLeft (PartAlpha (a:r)) = PartAlpha r
+	partReduceTop (PartAlpha a) = PartAlpha $ red a where 
+		red [] = []; red [1] = [] ; red [b] = [b-1]; red (b:r) = b:red r
+	partHookLength (i,j) (PartAlpha a) = if i<1||j<1 then error "Index to small" else 
+		partHookLength (i,1) $ partAsLambda $ PartAlpha $ drop (j-1) a
+	partCorners p@(PartAlpha a) = pc (partLength p) 1 [] a where 
+		pc _ _ acc [] = acc
+		pc i j acc (a:r) = if a>0 then pc (i-fromIntegral a) (j+1) ((i,j):acc) r else pc i (j+1) acc r
+	partDominates a b = partDominates (partAsLambda a) (partAsLambda b)
 	partAdd = zipAlpha (+)
 	partUnion = zipAlpha max
 
@@ -222,14 +232,25 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 	partSucc (PartLambda l) = PartLambda $ mysuc l where
 		mysuc [] = [1]
 		mysuc [a] = replicate (fromIntegral (a+1)) 1
-		mysuc r = fromJust $ my r where
-			my [a] = Nothing
-			my (a:b:r) = combine $ my $ b:r where
-				combine Nothing = if b==1 then Just $ a+1:r else Just $ a+1:b-1:r
-				combine (Just (c:r)) = if c>a then Just $ c:a:r else Just $a:c:r
-	partReduce (PartLambda l) = PartLambda $ r l where
+		mysuc r@(a:_) = fromJust $ my (a+1) r where
+			my x [a] = Nothing
+			my x (a:r) = case my a r of	
+				Just e  -> Just $ a:e
+				Nothing -> if x>a then Just $ (a+1):[1|_<-[2..sum r]] else Nothing
+	partReduceLeft (PartLambda l) = PartLambda $ r l where
 		r [] = [] ; r (1:_) = []
 		r (a:l) = (a-1):r l
+	partReduceTop (PartLambda l) = PartLambda $ drop 1 l
+	partHookLength (i,j) (PartLambda l) = let r = drop (i-1) l ; f = fromIntegral (head (r++[0])) - j 
+		in if i<1||j<1 then error "Index to small" else 
+			if f<0 then 0 else f + length (takeWhile (fromIntegral j<=) r)
+	partCorners (PartLambda l) = p 1 l where
+		p _ [] = [] ; p i [j] = [(i,fromIntegral j)]
+		p i (j:kr@(k:_)) = if j==k then p (i+1) kr else (i,fromIntegral j) : p (i+1) kr
+	partDominates (PartLambda l) (PartLambda m) = check 0 l m where
+		check s (a:l)(b:m) = ss >= 0 && check ss l m where ss = s+a-b
+		check s [] m = s >= sum m 		
+		check _ _ [] = True
 	partAdd (PartLambda l) (PartLambda m) = PartLambda $ a l m where
 		a xl@(x:l) ym@(y:m) | x==y = x : y : a l m
 			| x < y = y : a xl m
