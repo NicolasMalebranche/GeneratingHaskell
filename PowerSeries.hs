@@ -40,10 +40,13 @@ seriesMult (Elem afst arst) = let
 	facc (Elem b rb) = afst*b
 	in f facc arst
 
-seriesInv (Elem c r) = let
+seriesInv (Elem c r) = if c == 1 then seriesInvShift r else 
+	error "Constant coefficient not 1"
+
+-- Liefert 1/(1+x*r)
+seriesInvShift r = inv where
 	inv = Elem 1 invirr
 	invirr = fmap negate $ seriesMult r inv
-	in if c == 1 then inv else error "Constant coefficient not 1"
 
 -- Setzt das x-Fache einer Reihe ein
 seriesCompShift a r = co 1 a where
