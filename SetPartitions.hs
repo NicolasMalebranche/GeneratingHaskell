@@ -5,11 +5,12 @@ import Partitions hiding (TrieType,unTrieType)
 import Data.Array
 import Data.List
 import Data.MemoTrie
+import qualified Data.PSQueue as Q
 
 -- Mengenpartitionen als Codewoerter
 -- Jedem Index wird die Nummer der enthaltenden Menge zugewiesen (>= 1)
 -- Fehlende Nummern werden als leere Mengen interpretiert und stellen
--- entartete Faelle dar
+-- entartete Fälle dar
 newtype SetPartition = SetPart {setPartCode::[Int]}
 
 
@@ -37,6 +38,19 @@ setPartLength = maximum . setPartCode
 setPartFiner (SetPart s) (SetPart c) = 
 	length (nub $ zip c s) == length (nub c)
 
+-- Bestimmt, ob s eine sich kreuzende Partition ist,
+-- d. h. ob s = *a*b*a*b* als regulärer Ausdruck ist
+-- Nichtkreuzende Partitionen werden durch Catalanzahlen gezählt
+setPartCrossing (SetPart s) = f s (-1) (Q.empty) where
+	f [] _ _ = False
+	f (i:s) p q = case Q.lookup i q of 
+		Nothing -> f s (p-1) $ Q.insert i p q
+		Just 0 -> True
+		Just v -> f s (v-1) $ update v q
+	update v q = if p<v then update v $ Q.insert k 0 q else q where
+		Just (k Q.:-> p) = Q.findMin q 
+
+
 -- Behandelt entartete Partitionen so, als ob sie keine leere Mengen enthielten
 instance Eq SetPartition where
 	SetPart s == SetPart c = length s==length c && ls==lc && ls==lz where
@@ -52,3 +66,4 @@ instance HasTrie SetPartition where
 	trie f = TrieType $ trie $ f . SetPart
 	untrie f =  untrie (unTrieType f) . setPartCode
 	enumerate f  = map (\(a,b) -> (SetPart a,b)) $ enumerate (unTrieType f)
+
