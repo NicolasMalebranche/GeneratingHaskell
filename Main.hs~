@@ -1,3 +1,0 @@
-import HilbK3
-
-main = writeSym3 3
