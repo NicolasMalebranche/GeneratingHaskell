@@ -8,6 +8,7 @@ import Data.Ratio
 import Partitions
 import LinearAlgebra
 import MatrixAlgorithms
+import PowerSeries
 
 -- Kombinatorische Funktionen
 choose n k = ch1 n k where
@@ -20,8 +21,28 @@ multinomial 0 [] = 1
 multinomial n [] = 0
 multinomial n (k:r) = choose n k * multinomial (n-k) r
 
+kap a@(PartAlpha l) = mn `div` (product $map factorial l) * sum (zipWith (^) ll ll) where
+	mn = multinomial (partWeight a) ll
+	PartLambda ll = partAsLambda a
+
 factorial 0 = 1
 factorial n = n*factorial(n-1)
+
+-- Wertet symmetrische Polynome aus
+symEval vars = vl where
+	es = seriesToList $ product [Elem 1 $ Elem x 0 | x<-vars]
+	hs = seriesToList $ seriesInvShift hi where
+		Elem _ hi = product [Elem 1 $ Elem (-x) 0 | x<-vars]
+	ps = [sum $ map (^n) vars | n<-[0..]]
+	[ef,hf,pf] = map (memo.(!!)) [es,hs,ps]
+	prod f (PartLambda l) = product [f x |x<-l]
+	vl 'e' = prod ef
+	vl 'h' = prod hf
+	vl 'p' = prod pf
+	vl 's' = \j -> sum [ prod hf (partAsLambda i) * kostkaInv i j 
+		| i<-partOfWeight (partWeight j) ]
+	vl 'm' = \i -> sum [ monomialComplete i j * prod hf (partAsLambda j) 
+		| j<-partOfWeight (partWeight i) ]
 
 
 -- http://www.mat.univie.ac.at/~slc/wpapers/s68vortrag/ALCoursSf2.pdf , S. 48
