@@ -51,3 +51,15 @@ multiplicativeTrafo (Elem _ f) (Elem _ g) = let
 	Elem _ lref = seriesCompShift seriesLog ref
 	ltr = applyTrafo a lref
 	in seriesCompShift seriesExp ltr
+
+-- leitet die Potenzreihe des ersten Arguments nach dem k-ten Element der zweiten ab
+multiplicativeDiff (Elem _ f) (Elem _ g) k =  let
+	Elem _ lf = seriesCompShift seriesLog f
+	Elem _ lg = seriesCompShift seriesLog g
+	a = map fromRational $ linearTrafo lf lg
+	b = map fromRational $ linearTrafo lg lf
+	ref = seriesGenerating [ InfPol [(PartLambda [i],1%1)] | i<-[1..]]
+	Elem _ lref = seriesCompShift seriesLog ref
+	ltr = negate $ applyTrafo b lref
+	ee = seriesShift k $ seriesCompShift seriesExp ltr
+	in applyTrafo a ee * Elem 1 ref
