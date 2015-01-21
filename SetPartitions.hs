@@ -6,6 +6,7 @@ import Data.Array
 import Data.List
 import Data.MemoTrie
 import qualified Data.PSQueue as Q
+import Debug.Trace
 
 -- Mengenpartitionen als Codewoerter
 -- Jedem Index wird die Nummer der enthaltenden Menge zugewiesen (>= 1)
@@ -26,17 +27,47 @@ setPartToLambda (SetPart s) =
 
 -- Macht eine Liste von Listen daraus
 setPartInstances set (SetPart s) = elems a where
-	a = accumArray (flip (:)) [] (1,maximum s) $ zip s set
+	a = accumArray (flip (:)) [] (1,foldr max 0 s) $ zip s set
 
 -- Anzahl der Elemente == partWeight.setPartToLambda
 setPartSize = length . setPartCode 
 
 -- Anzahl der Teilmengen == partLength.setPartToLambda, im nichtentarteten Fall
-setPartLength = maximum . setPartCode
+setPartLength = foldr max 0 . setPartCode
 
 -- Bestimmt, ob die erste Partition feiner ist als die zweite
 setPartFiner (SetPart s) (SetPart c) = 
-	length (nub $ zip c s) == length (nub c)
+	length (nub $ zip c s) == length (nub s)
+
+-- Entfernt leere Mengen aus der Partition
+setPartNormalize (SetPart s) = SetPart $ map look s where
+	q = Q.fromList $ zipWith (Q.:->) (nub s) [0..] ; sq = Q.size q
+	look k = sq - i where Just i = Q.lookup k q
+
+-- Entfernt leere Mengen. Stellt die Anzahl der Elemente richtig ein.
+-- Wenn neue Elemente hinzukommen, sind sie isoliert
+setPartNormalSize n (SetPart s) = 
+	setPartNormalize $ SetPart $ take n $ s ++ [foldr max 0 s+1..]
+
+-- Groebste gemeinsame Verfeinerung 
+setPartMin (SetPart s) (SetPart c) = SetPart $ map look $ zip s c where
+	q = Q.fromList $ zipWith (Q.:->) (nub $ zip s c) [0..] ; sq = Q.size q
+	look k = sq - i where Just i = Q.lookup k q
+
+-- Feinste gemeinsame Vergroeberung
+setPartMax p1 p2 = run True (ma s) (ma c) $ zip s c  where
+	n = max (setPartSize p1) (setPartSize p2)
+	[s,c] = map (setPartCode.setPartNormalSize n) [p1,p2]
+	ma l = array (1,m) [(i,i)| i<-[1..m]] where m = foldr max 0 l 
+	end arr = setPartNormalize . SetPart . map (u !) where
+		u = arr // [(i,u!k) | (i,k)<-assocs arr, i/=k]
+	run i a b l = if exit then end b c else run (not i) newb a r where
+		sorted = map head $ group $ sort l
+		grouped = map (map snd) $ groupBy ((.fst).(==).fst) sorted
+		exit = i && all (1==) (map length grouped)
+		ass x = zip (tail x) (repeat $ newb ! head x)
+		newb = b // (concat $ map ass grouped)
+		r = [(newb!y,x) | (x,y) <- sorted ]
 
 -- Bestimmt, ob s eine sich kreuzende Partition ist,
 -- d. h. ob s = *a*b*a*b* als regulärer Ausdruck ist
@@ -50,8 +81,6 @@ setPartCrossing (SetPart s) = f s (-1) (Q.empty) where
 	update v q = if p<v then update v $ Q.insert k 0 q else q where
 		Just (k Q.:-> p) = Q.findMin q 
 
-
--- Behandelt entartete Partitionen so, als ob sie keine leere Mengen enthielten
 instance Eq SetPartition where
 	SetPart s == SetPart c = length s==length c && ls==lc && ls==lz where
 		ls = length (nub s); lc = length (nub c)
