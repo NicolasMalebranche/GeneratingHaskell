@@ -31,7 +31,7 @@ ahat = cr 1 $ recip $ fmap (/2) $ s where
 	cr k (Elem a (Elem _ r)) = Elem (a/k) $ cr (4*k) r
 -------------------------------------------------------------------------------
 
-instance (Fractional a,Eq a, Partition p,Ord p) => 
+instance (Fractional a,Eq a, Partition p,Ord p,Show p) => 
 	Fractional (InfinitePolynomial p a) where
 	fromRational r = InfPol [(partEmpty,fromRational r)]
 	(/) = undefined
