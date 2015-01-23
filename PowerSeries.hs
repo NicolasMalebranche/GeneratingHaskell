@@ -12,7 +12,7 @@ data PowerSeries a = Elem a (PowerSeries a)
 
 -- das Monom t
 t :: (Num a) => PowerSeries a
-t = Elem 0 $ Elem 1 0
+t = Elem 0 1
 
 nullSeries _ = nll where
 	nll = Elem 0 nll
@@ -32,6 +32,10 @@ seriesZip op = let
 	in zz
 
 seriesToList (Elem a r) = a:seriesToList r
+
+-- n-ter Koeffizient
+seriesCoeff s n = if n<0 then 0 else c s n where
+	c (Elem a r) n = if n==0 then a else c r (n-1) 
 
 seriesMult (Elem afst arst) = let
 	f acc ale br = Elem (acc br) $ f newacc ar br where
@@ -167,13 +171,6 @@ instance Floating a => Floating (PowerSeries a) where
 	sqrt (Elem c r) = fmap (* sqrt c) $ Elem 1 x where
 		rr = fmap (/c) r
 		x = fmap (/2) $ rr - Elem 0 (x^2)
-	
-
-tsch 0 = 1
-tsch 1 = seriesGenerating [0,2]
-tsch n = tsch 1* tsch(n-1) - tsch (n-2)
-
-
 
 instance (Show a) => Show (PowerSeries a) where
 	show r = let

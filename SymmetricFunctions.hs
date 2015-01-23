@@ -25,16 +25,15 @@ kap a@(PartAlpha l) = mn `div` (product $map factorial l) * sum (zipWith (^) ll 
 	mn = multinomial (partWeight a) ll
 	PartLambda ll = partAsLambda a
 
-factorial 0 = 1
-factorial n = n*factorial(n-1)
+factorial n = f n 1 
+	where f n a = if n==0 then 1 else f (n-1) $! n*a
 
 -- Wertet symmetrische Polynome aus
 symEval vars = vl where
-	es = seriesToList $ product [Elem 1 $ Elem x 0 | x<-vars]
-	hs = seriesToList $ seriesInvShift hi where
-		Elem _ hi = product [Elem 1 $ Elem (-x) 0 | x<-vars]
-	ps = [sum $ map (^n) vars | n<-[0..]]
-	[ef,hf,pf] = map (memo.(!!)) [es,hs,ps]
+	es@(Elem _ er) = foldr (\x s -> s+Elem 0(fmap(x*)s)) 1 vars
+	ef = memo $ seriesCoeff es
+	hf = memo $ seriesCoeff $ seriesCompNegate $ seriesInvShift er 
+	pf = memo $ \n -> sum $ map (^n) vars
 	prod f (PartLambda l) = product [f x |x<-l]
 	vl 'e' = prod ef
 	vl 'h' = prod hf
