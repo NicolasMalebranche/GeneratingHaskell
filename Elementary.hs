@@ -6,14 +6,13 @@ module Elementary where
 -- combinations [a,b,c..] = [[x,y,z..] | x<-a , y<-b, z<-c ..]
 combinations :: [[a]] -> [[a]]
 combinations [] = [[]]
-combinations (l:r) = [a:b | a<-l , b<-combinations r]
+combinations (l:r) = [a:b | a<-l, b<-cr ] where cr=combinations r
 
 
 -- Fakultätsfunktion
-factorial = facAcc 1 where 
-	facAcc a 0 = a
-	facAcc a n = facAcc (n*a) (n-1)
-
+factorial n = facAcc n 1 where 
+	facAcc 0 a = a
+	facAcc n a = facAcc (n-1) $! n*a 
 
 -- Binomialkoeffizienten
 binomial n k = if kk<0 then 0 else fromIntegral $ p 1 1 where
