@@ -1,10 +1,10 @@
 {-# LANGUAGE FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses #-}
-module LinearAlgebra2 where
+module LinearAlgebra where
 
 import Data.MemoTrie
 import Data.List
+import Data.List.Ordered
 import Data.Array
-import qualified Data.IntMap as IM
 
 
 -- Klassen für Lineare Algebra
@@ -20,10 +20,10 @@ instance (Num a, HasTrie i) => MV [j] (i->j->a) (j->a) (i->a) where
 		f i = sum [ m i j * v j | j <- vs ]
 
 -- Instanz fuer Sparse-Matrizen
-instance (Num a, HasTrie i) => MV [Int] (i->IM.IntMap a) (Int->a) (i->a) where
-	mv vs m v = memo f where
-		vv = IM.fromList [(j,x) | j<-vs, let x = v j, x/=0]
-		f i = IM.fold (+) 0 $ IM.intersectionWith (*) vv $ m i
+instance (Num a, HasTrie i, Ord j) => MV (j,j) (i->[(j,a)]) (j->a) (i->a) where
+	-- m i muss aufsteigend sortiert sein
+	mv (a,b) m v = memo f where
+		f i = sum [ x * v j | (j,x) <- takeWhile ((<=b).fst) $ dropWhile ((<a).fst) $ m i]
 
 -- Instanz fuer Arrays
 instance (Num a, Ix i, Ix j) => MV [j] (Array (i,j) a) (Array j a) (Array i a) where
@@ -43,9 +43,10 @@ instance (Num a, HasTrie j) => VM [i] (i->a) (i->j->a) (j->a) where
 		f j = sum [ v i * m i j | i <- vs ]
 
 -- Instanz fuer Sparse-Matrizen
-instance Num a => VM [i] (i->a) (i->IM.IntMap a) (IM.IntMap a) where
-	vM vs v m = IM.fromListWith (+)
-		[ (j, v i * x) | i <- vs, (j,x) <- IM.toList $ m i ]
+instance (Num a, Ord j) => VM [i] (i->a) (i->[(j,a)]) [(j,a)] where
+	vM vs v m = map (\t -> (fst $ head t, foldr ((+).snd) 0 t)) $ 
+		groupBy ((.fst).(==).fst) $	foldr (mergeBy ((.fst).compare.fst)) [] $ 
+		[ [(j, v i*x) | (j,x) <- m i] | i<-vs]
 
 -- Instanz fuer Arrays
 instance (Num a, Ix i, Ix j) => VM [i] (Array i a) (Array (i,j) a) (Array j a) where
@@ -62,9 +63,6 @@ class MElem matrix index1 index2 value | matrix -> index1 index2 value where
 instance MElem (i->j->a) i j a where
 	mElem = id
 
-instance MElem (i->IM.IntMap a) i Int a where
-	mElem m i j = m i IM.! j 
-
 instance (Ix i, Ix j) => MElem (Array (i,j) a) i j a where
 	mElem m i j = m!(i,j)
 
@@ -76,9 +74,6 @@ class VElem vector index value | vector -> index value where
 
 instance VElem (i->a) i a where
 	vElem = id
-
-instance VElem (IM.IntMap a) Int a where
-	vElem = (IM.!)
 
 instance Ix i => VElem (Array i a) i a where
 	vElem = (!)
