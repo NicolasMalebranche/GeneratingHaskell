@@ -9,63 +9,15 @@ import Data.Array
 
 -- Klassen für Lineare Algebra
 
+-- Standardimplementierung fuer Matrizen: Memoisierte Indexfunktionen
+-- Der Koeffizientenbereich ist nicht Teil des Matrixdatums, sondern 
+-- muss jedesmal separat angegeben werden. Bei Sparse-Zeilenvektoren ist das zwar  
+-- etwas laestig, erlaubt jedoch den problemlosen Umgang mit unendlichen Matrizen.
+-- Bei den anderen Implementationen ergibt das kostenlose Vertauschung bzw.
+-- Auswahl von Spalten und Zeilen
 
--- Definiert die Operation "Matrix mal Vektor"
-class MV range matrix vector output | matrix vector -> range output where
-	mv :: range -> matrix -> vector -> output
-
--- Instanz fuer Indexfunktionen
-instance (Num a, HasTrie i) => MV [j] (i->j->a) (j->a) (i->a) where
-	mv vs m v = memo f where 
-		f i = sum [ m i j * v j | j <- vs ]
-
--- Instanz fuer Sparse-Matrizen
-instance (Num a, HasTrie i, Ord j) => MV (j,j) (i->[(j,a)]) (j->a) (i->a) where
-	-- m i muss aufsteigend sortiert sein
-	mv (a,b) m v = memo f where
-		f i = sum [ x * v j | (j,x) <- takeWhile ((<=b).fst) $ dropWhile ((<a).fst) $ m i]
-
--- Instanz fuer Arrays
-instance (Num a, Ix i, Ix j) => MV [j] (Array (i,j) a) (Array j a) (Array i a) where
-	mv vs m v = listArray (li,ui) $ map f $ range (li,ui) where
-		((li,_),(ui,_)) = bounds m
-		f i = sum [ m!(i,j) * v!j | j <- vs ] 
-
-
-
--- Definiert die Operation "Vektor mal Matrix"
-class VM range vector matrix output | vector matrix -> range output where
-	vM :: range -> vector -> matrix -> output
-
--- Instanz fuer Indexfunktionen
-instance (Num a, HasTrie j) => VM [i] (i->a) (i->j->a) (j->a) where
-	vM vs v m = memo f where
-		f j = sum [ v i * m i j | i <- vs ]
-
--- Instanz fuer Sparse-Matrizen
-instance (Num a, Ord j) => VM [i] (i->a) (i->[(j,a)]) [(j,a)] where
-	vM vs v m = map (\t -> (fst $ head t, foldr ((+).snd) 0 t)) $ 
-		groupBy ((.fst).(==).fst) $	foldr (mergeBy ((.fst).compare.fst)) [] $ 
-		[ [(j, v i*x) | (j,x) <- m i] | i<-vs]
-
--- Instanz fuer Arrays
-instance (Num a, Ix i, Ix j) => VM [i] (Array i a) (Array (i,j) a) (Array j a) where
-	vM vs v m = listArray (lj,uj) $ map f $ range (lj,uj) where
-		((_,lj),(_,uj)) = bounds m
-		f j = sum [ v!i * m!(i,j) | i <- vs ]
-
-
-
--- Klasse fuer Matrizen
-class MElem matrix index1 index2 value | matrix -> index1 index2 value where
-	mElem :: matrix -> index1 -> index2 -> value
-
-instance MElem (i->j->a) i j a where
-	mElem = id
-
-instance (Ix i, Ix j) => MElem (Array (i,j) a) i j a where
-	mElem m i j = m!(i,j)
-
+-- Sparse-Vektoren: (Ord i, Num a) => [(i,a)]
+isectRange (a,b) = takeWhile ((<=b).fst) . dropWhile ((<a).fst)
 
 
 -- Klasse fuer Vektoren
@@ -78,9 +30,108 @@ instance VElem (i->a) i a where
 instance Ix i => VElem (Array i a) i a where
 	vElem = (!)
 
+instance (Num a, Ord i) => VElem [(i,a)] i a where
+	vElem v i = case isectBy ((.fst).compare.fst) v [(i,undefined)] of
+		{ [] -> 0;  [(_,a)] -> a }
+
+
+-- Klasse fuer Skalarprodukte
+class VV range vector index value | vector -> index value, range -> index where
+	vV :: range -> vector -> vector -> value
+
+instance Num a => VV [i] (i->a) i a where
+	vV vs v w = sum [v i * w i | i <- vs]
+
+instance (Num a, Ix i) => VV [i] (Array i a) i a where
+	vV vs v w = sum [v!i * w!i | i <- vs]
+
+instance (Ord i, Num a) => VV (i,i) [(i,a)] i a where
+	vV ab v w = let 
+		iw = isectRange ab w 
+		multplus [(_,x),(_,y)] r = x*y + r
+		multplus _ r = r
+		in foldr multplus 0 $ groupBy ((.fst).(==).fst) $ 
+			mergeBy ((.fst).compare.fst) v iw
+	
+		
+
+-- Klasse fuer Matrizen
+class MElem matrix index1 index2 value row | matrix -> index1 index2 value row where
+	mElem :: matrix -> index1 -> index2 -> value
+	mRow  :: matrix -> index1 -> row
+
+instance MElem (i->j->a) i j a (j->a) where
+	mElem = id
+	mRow  = id
+
+instance (Ix i, Ix j) => MElem (Array (i,j) a) i j a (Array j a) where
+	mElem m i j = m!(i,j)
+	mRow  m = let ((_,a),(_,b)) = bounds m  
+		in \i -> listArray (a,b) $ map (mElem m i) $ range (a,b)
+		
+instance (Num a, HasTrie i, Ord j) => MElem (i->[(j,a)]) i j a [(j,a)] where
+	mElem = (vElem .) . mRow  
+	mRow = id
+
+
+-- Definiert die Operation "Matrix mal Vektor"
+class MV range matrix vector output | matrix vector -> range output where
+	mV :: range -> matrix -> vector -> output
+
+-- Instanz fuer Indexfunktionen
+instance (Num a, HasTrie i, VElem v j a) => MV [j] (i->j->a) v (i->a) where
+	mV vs m v = memo f where 
+		f i = sum [ m i j * vElem v j | j <- vs ]
+
+-- Instanz fuer Sparse-Matrizen * Funktions-Vektoren
+instance (Num a, HasTrie i, Ord j) => MV (j,j) (i->[(j,a)]) (j->a) (i->a) where
+	mV ab m v = memo f where
+		f i = sum [ x * v j | (j,x) <- isectRange ab $ m i]
+
+-- Instanz fuer Sparse-Matrizen * Sparse-Vektoren
+instance (Num a, HasTrie i, Ord j) => MV (j,j) (i->[(j,a)]) [(j,a)] (i->a) where
+	mV ab m v = memo f where
+		f i = vV ab (m i) v
+
+-- Instanz fuer Array-Matrizen 
+instance (Num a, Ix i, Ix j, VElem v j a) => MV [j] (Array (i,j) a) v (Array i a) where
+	mV vs m v = listArray (li,ui) $ map f $ range (li,ui) where
+		((li,_),(ui,_)) = bounds m
+		f i = sum [ m!(i,j) * vElem v j | j <- vs ] 
+
+
+
+-- Definiert die Operation "Vektor mal Matrix"
+class VM range vector matrix output | vector matrix -> range output where
+	vM :: range -> vector -> matrix -> output
+
+-- Instanz fuer Indexfunktionen
+instance (Num a, HasTrie j, VElem v i a) => VM [i] v (i->j->a) (j->a) where
+	vM vs v m = memo f where
+		f j = sum [ vElem v i * m i j | i <- vs ]
+
+-- Instanz fuer Sparse-Matrizen
+instance (Num a, Ord j) => VM [i] (i->a) (i->[(j,a)]) [(j,a)] where
+	vM vs v m = map (\t -> (fst $ head t, foldr ((+).snd) 0 t)) $ 
+		groupBy ((.fst).(==).fst) $	foldr (mergeBy ((.fst).compare.fst)) [] $ 
+		[ [(j, v i*x) | (j,x) <- m i] | i<-vs]
+
+-- Instanz fuer Arrays
+instance (Num a, Ix i, Ix j, VElem v i a) => VM [i] v (Array (i,j) a) (Array j a) where
+	vM vs v m = listArray (lj,uj) $ map f $ range (lj,uj) where
+		((_,lj),(_,uj)) = bounds m
+		f j = sum [ vElem v i * m!(i,j) | i <- vs ]
+
+
 
 -- Spur einer Matrix
 trace vs m = sum [mElem m j j | j<-vs]
+
+-- Skalarprodukt fuer Matrizen
+mScalarN vs1 vs2 m n = sum [vV vs2 (mRow m i) (mRow n i) | i<-vs1 ]
+
+-- Skalarprodukt mit sich selber, Normquadrat
+mScalarM vs m = mScalarN vs vs m m
 
 delta i j = if i==j then 1 else 0
 nullv _ = 0
