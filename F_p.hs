@@ -64,9 +64,9 @@ instance (ModP fp i) => Eq (F fp) where
 	a == b = 0 == ((decon a - decon b) `mod` (p a))
 
 instance (ModP fp i) => Num (F fp) where
-	a + b = con $ decon a + decon b `mod` (p a)
-	a - b = con $ decon a - decon b `mod` (p a)
-	a * b = con $ decon a * decon b `mod` (p a)
+	a + b = con $ (decon a + decon b) `mod` (p a)
+	a - b = con $ (decon a - decon b) `mod` (p a)
+	a * b = con $ (decon a * decon b) `mod` (p a)
 	abs = undefined
 	signum = undefined
 	fromInteger i = x where 
