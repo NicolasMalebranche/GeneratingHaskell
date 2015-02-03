@@ -22,9 +22,6 @@ type FMat i j a = i -> j -> a
 type AVect i a = Array i a
 type AMat i j a = Array (i,j) a
 
--- Diagonale Matrizen können als Vektoren gespeichert werden
-newtype DiagonalMatrix v = DiagonalMatrix v
-
 
 -- Klasse fuer Vektoren
 class VElem vector index value | vector -> index value where
@@ -62,10 +59,6 @@ instance (Ix i, Ix j) => MElem (Array (i,j) a) i j a (Array j a) where
 	mRow m = let ((_,a),(_,b)) = bounds m  
 		in \i -> listArray (a,b) $ map (mElem m i) $ range (a,b)
 
-instance (Num a, Eq i, VElem v i a) => MElem (DiagonalMatrix v) i i a (i->a) where
-	mElem (DiagonalMatrix v) i j = if i==j then vElem v i else 0
-	mRow = mElem
-
 
 -- Definiert die Operation "Matrix mal Vektor"
 class MV range matrix vector output | matrix vector -> range output where
@@ -80,9 +73,6 @@ instance (Num a, Ix i, Ix j, VElem v j a) => MV [j] (Array (i,j) a) v (Array i a
 		((li,_),(ui,_)) = bounds m
 		f i = sum [ m!(i,j) * vElem v j | j <- vs ] 
 
-instance (Num a, VElem v i a) => MV [i] (DiagonalMatrix v) v (i->a) where
-	mV _ (DiagonalMatrix m) v i = vElem m i * vElem v i
-
 
 -- Definiert die Operation "Vektor mal Matrix"
 class VM range vector matrix output | vector matrix -> range output where
@@ -96,9 +86,6 @@ instance (Num a, Ix i, Ix j, VElem v i a) => VM [i] v (Array (i,j) a) (Array j a
 	vM vs v m = listArray (lj,uj) $ map f $ range (lj,uj) where
 		((_,lj),(_,uj)) = bounds m
 		f j = sum [ vElem v i * m!(i,j) | i <- vs ]
-
-instance (Num a, VElem v i a) => VM [i] v (DiagonalMatrix v) (i->a) where
-	vM _ v (DiagonalMatrix m) i = vElem v i * vElem m i
 
 
 -- Definiert die Operation "Matrix mal Matrix"
@@ -118,34 +105,9 @@ instance (Num a, Ix i, Ix j, Ix k) =>
 		b = ((ini,ink),(axi,axk))
 		f i k = sum [m!(i,j)*n!(j,k) | j<-vs]
 
-instance (Num a, VElem v i a) => MM [i] i i j a (DiagonalMatrix v) (i->j->a) (i->j->a) where
-	mM _ (DiagonalMatrix v) m i = let ve=vElem v i in \j->ve* m i j
-
-instance (Num a, VElem v i a,Ix i, Ix j) => 
-	MM [i] i i j a (DiagonalMatrix v) (Array (i,j) a) (Array (i,j) a) where
-	mM _ (DiagonalMatrix v) m = array (bounds m) 
-		[((i,j),vElem v i*a) | ((i,j),a)<-assocs m]
-
-instance (Num a, VElem v j a) => MM [j] i j j a (i->j->a) (DiagonalMatrix v) (i->j->a) where
-	mM _ m (DiagonalMatrix v) i j = m i j * vElem v j
-
-instance (Num a, VElem v j a, Ix i, Ix j) => 
-	MM [i] i j j a (Array (i,j) a) (DiagonalMatrix v) (Array (i,j) a) where
-	mM _ m (DiagonalMatrix v) = array (bounds m) 
-		[((i,j),a*vElem v j) | ((i,j),a)<-assocs m]
-
-instance (Num a, VElem m i a, VElem n i a) => 
-	MM [i] i i i a (DiagonalMatrix m) (DiagonalMatrix n) (DiagonalMatrix (i->a)) where
-	mM _ (DiagonalMatrix m) (DiagonalMatrix n) = DiagonalMatrix $ \i-> vElem m i*vElem n i
 
 -- Spur einer Matrix
 trace vs m = sum [mElem m j j | j<-vs]
-
--- Skalarmultiplikation fuer Matrizen
-mScale m a = mM undefined m $ DiagonalMatrix $ const a
-
--- Skalarmultiplikation fuer Vektoren
-vScale v a = vM undefined v $ DiagonalMatrix $ const a
 
 -- Skalarprodukt fuer Matrizen
 mScalarN vs1 vs2 m n = sum [vV vs2 (mRow m i) (mRow n i) | i<-vs1 ]
@@ -157,8 +119,6 @@ delta i j = if i==j then 1 else 0
 nullv _ = 0
 nullm _ _ = 0
 fork op g h i = op (g i) (h i) 
-
--- flip ist Transposition
 
 
 -- Stellt Vektor als Zeile dar
