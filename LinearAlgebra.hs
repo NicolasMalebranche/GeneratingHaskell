@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, UndecidableInstances, EmptyDataDecls #-}
 module LinearAlgebra where
 
 import Data.MemoTrie
@@ -102,43 +102,50 @@ instance (Num a, VElem v i a) => VM [i] v (DiagonalMatrix v) (i->a) where
 
 
 -- Definiert die Operation "Matrix mal Matrix"
-class MM range matrix1 matrix2 output | matrix1 matrix2 -> range output where
+class MM range i j k a matrix1 matrix2 output | matrix1 matrix2 -> range output, 
+	range -> j, matrix1 -> i j a, matrix2 -> j k a, output -> i k a where
 	mM :: range -> matrix1 -> matrix2 -> output
 	
 instance (Num a, HasTrie i, HasTrie j, HasTrie k) =>
-	MM [j] (i->j->a) (j->k->a) (i->k->a) where
+	MM [j] i j k a (i->j->a) (j->k->a) (i->k->a) where
 	mM vs m n = memo2 $ \i k -> sum [ m i j * n j k | j<-vs ]
 
 instance (Num a, Ix i, Ix j, Ix k) => 
-	MM [j] (Array (i,j) a) (Array (j,k) a) (Array (i,k) a) where
+	MM [j] i j k a (Array (i,j) a) (Array (j,k) a) (Array (i,k) a) where
 	mM vs m n = array b [((i,k),f i k) | (i,k) <- range b] where
 		((ini,_),(axi,_)) = bounds m
 		((_,ink),(_,axk)) = bounds n
 		b = ((ini,ink),(axi,axk))
 		f i k = sum [m!(i,j)*n!(j,k) | j<-vs]
 
-instance (Num a, VElem v i a) => MM [i] (DiagonalMatrix v) (i->j->a) (i->j->a) where
+instance (Num a, VElem v i a) => MM [i] i i j a (DiagonalMatrix v) (i->j->a) (i->j->a) where
 	mM _ (DiagonalMatrix v) m i = let ve=vElem v i in \j->ve* m i j
 
 instance (Num a, VElem v i a,Ix i, Ix j) => 
-	MM [i] (DiagonalMatrix v) (Array (i,j) a) (Array (i,j) a) where
+	MM [i] i i j a (DiagonalMatrix v) (Array (i,j) a) (Array (i,j) a) where
 	mM _ (DiagonalMatrix v) m = array (bounds m) 
 		[((i,j),vElem v i*a) | ((i,j),a)<-assocs m]
 
-instance (Num a, VElem v j a) => MM [j] (i->j->a) (DiagonalMatrix v) (i->j->a) where
+instance (Num a, VElem v j a) => MM [j] i j j a (i->j->a) (DiagonalMatrix v) (i->j->a) where
 	mM _ m (DiagonalMatrix v) i j = m i j * vElem v j
 
 instance (Num a, VElem v j a, Ix i, Ix j) => 
-	MM [i] (Array (i,j) a) (DiagonalMatrix v) (Array (i,j) a) where
+	MM [i] i j j a (Array (i,j) a) (DiagonalMatrix v) (Array (i,j) a) where
 	mM _ m (DiagonalMatrix v) = array (bounds m) 
 		[((i,j),a*vElem v j) | ((i,j),a)<-assocs m]
 
 instance (Num a, VElem m i a, VElem n i a) => 
-	MM [i] (DiagonalMatrix m) (DiagonalMatrix n) (DiagonalMatrix (i->a)) where
+	MM [i] i i i a (DiagonalMatrix m) (DiagonalMatrix n) (DiagonalMatrix (i->a)) where
 	mM _ (DiagonalMatrix m) (DiagonalMatrix n) = DiagonalMatrix $ \i-> vElem m i*vElem n i
 
 -- Spur einer Matrix
 trace vs m = sum [mElem m j j | j<-vs]
+
+-- Skalarmultiplikation fuer Matrizen
+mScale m a = mM undefined m $ DiagonalMatrix $ const a
+
+-- Skalarmultiplikation fuer Vektoren
+vScale v a = vM undefined v $ DiagonalMatrix $ const a
 
 -- Skalarprodukt fuer Matrizen
 mScalarN vs1 vs2 m n = sum [vV vs2 (mRow m i) (mRow n i) | i<-vs1 ]
