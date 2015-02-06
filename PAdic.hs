@@ -6,6 +6,7 @@ module PAdic where
 import System.IO.Unsafe
 import Data.IORef
 import Data.Ratio
+import ContinuedFraction
 
 -- Datentyp für Ziffern. Sollte p^2 noch enthalten
 type Digit = Int
@@ -28,6 +29,13 @@ mod_p k = fromIntegral $ k `mod`  p() :: Digit
 choose n k = a 1 1 where
 	bd = if n > 2*k then k else n-k
 	a i acc = if i > bd then acc else a (i+1) $ acc*(n-bd+i) `div` i
+
+-- Rationale Approximation von c mit Modulus m
+-- https://www.cs.drexel.edu/~jjohnson/2012-13/fall/cs300/resources/p2-wang.pdf
+rationalApproximation c m = rc (0,m) (1,c) where
+	rc (u2,u3) (v2,v3) = let (q,r) = divMod u3 v3 in
+		if m > 2*v3^2 then v3%v2 else
+		rc (v2,v3) (u2-q*v2,r)
 
 -----------------------------------------------------------------------------------------
 
@@ -79,6 +87,7 @@ invZ_p a = d 1 where
 -- Schneidet (max. 8) führende Nullen ab
 estimateOrderZ_p = e 0 where e i z@(Z_p a r) = if i>7 || a/=0 then (i,z) else e (i+1) r
 
+
 instance Num Z_p where
 	fromInteger i = Z_p m $ fromInteger d  where (d,m)= divMod_p i
 	(+) = c 0 where c u (Z_p a x)(Z_p b y) = Z_p m $c d x y where (d,m)= divMod_p (u+a+b)
@@ -105,6 +114,14 @@ instance Fractional Z_p where
 		a' = fromIntegral $ invMod_p a
 		d c = Z_p (fromIntegral b) $ d $ div_p (c-a*b) where 
 			b = mod (c*a') $ p()
+
+instance Ord Z_p -- Das muss leider sein, damit 
+-- die Real-Instanz definierbar wird
+instance Real Z_p where
+	toRational z = create 0 1 z 0 where
+		create n m (Z_p a r) c = 
+			if n > q_pPrec then rationalApproximation c m
+			else create (n+1) (p()*m) r $! c+fromIntegral a*m
 
 -- Setzt p^o * r, r eine Z_p-Zahl in eine exp-artige Reihe ein
 inExpSeriesZ_p coeffs (o,r) = if (p()-1)*o<=1 then error "series not convergent" else f 1 0 1 coeffs where
@@ -195,7 +212,7 @@ instance Show Z_p where
 -- Im Prinzip die Reimplementierung von Laurentreihen.
 data Q_p = Q_p Int Z_p
 
--- Präzisions-Potenz für Laurentreihen. Braucht man zum Invertieren.
+-- Präzisions-Potenz. Braucht man zum Invertieren.
 {-# NOINLINE q_pPrecRef #-}
 q_pPrecRef = unsafePerformIO $ newIORef 60
 q_pPrec = unsafePerformIO $ readIORef q_pPrecRef 
@@ -230,6 +247,10 @@ instance Fractional Q_p where
 		(oz,rz) = orderRem_p z
 		(on,rn) = orderRem_p n
 	Q_p o r / qr = Q_p (o-o') (r/r') where Q_p o' r' = cleanQ_p qr
+
+instance Ord Q_p
+instance Real Q_p where
+	toRational (Q_p o z) = toRational z* if o>0 then p()^o else recip(p())^(-o)
 
 -- Setzt eine Q_p-Zahl in eine exp-artige Reihe ein
 inExpSeriesQ_p coeffs rx = if (p()-1)*o<=1 then error "series not convergent" else e where
