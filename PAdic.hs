@@ -115,8 +115,11 @@ instance Fractional Z_p where
 		d c = Z_p (fromIntegral b) $ d $ div_p (c-a*b) where 
 			b = mod (c*a') $ p()
 
-instance Ord Z_p -- Das muss leider sein, damit 
--- die Real-Instanz definierbar wird
+instance Eq Z_p where 
+	a == b = Q_p 0 a == Q_p 0 b
+instance Ord Z_p  where -- Das muss leider sein, damit 
+	-- die Real-Instanz definierbar wird
+	compare a b = compare (Q_p 0 a) (Q_p 0 b)
 instance Real Z_p where
 	toRational z = create 0 1 z 0 where
 		create n m (Z_p a r) c = 
@@ -248,7 +251,13 @@ instance Fractional Q_p where
 		(on,rn) = orderRem_p n
 	Q_p o r / qr = Q_p (o-o') (r/r') where Q_p o' r' = cleanQ_p qr
 
-instance Ord Q_p
+instance Eq Q_p where 
+	z==zz = nearZeroQ_p $ z-zz
+
+instance Ord Q_p where -- Das ist schon blöd
+	compare a b = c (cleanQ_p a) (cleanQ_p b) where
+		c (Q_p o _) (Q_p oo _) = compare oo o
+
 instance Real Q_p where
 	toRational (Q_p o z) = toRational z* if o>0 then p()^o else recip(p())^(-o)
 
