@@ -1,7 +1,8 @@
 -- a module for the integer cohomology structure of a K3 surface
 module K3 (
 	K3Domain,
-	degK3,
+	bilK3,
+	degK3, 
 	rangeK3,
 	oneK3, xK3,
 	cupLSparse,
