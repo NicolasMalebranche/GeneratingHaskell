@@ -39,6 +39,12 @@ sym 0 _ = [[]]
 sym n [] = []
 sym n t@(a:r) = map (a:) (sym (n-1) t) ++ sym n r
 
+asym 0 _ = [[]]
+asym n [] = []
+asym n (a:r) = map (a:) (asym (n-1) r) ++ asym n r
+
+
+
 f2 n l = accumArray ((flip mod 2.).(+)) 0 (1,n) $ zip l $ repeat 1
 
 allf2 n = map (listArray (1,n)) $  al n where
@@ -62,4 +68,7 @@ primeFactors n = [(head x, length x) | x<- group $check primes $ abs n] where
 	check _ 1 = []
 	check l@(p:r) n = if m==0 then p:check l d else check r n where (d,m) = divMod n p 
 
+
+obj n i = sum [fromInteger (sig p)* x_ (p!!i) | p<-permutations [1..n]] where
+sig p =  product [signum $ (a-b)*(i-j) | [(a,i),(b,j)] <- asym 2 $ zip [1..] p]
 
