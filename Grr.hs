@@ -72,3 +72,13 @@ primeFactors n = [(head x, length x) | x<- group $check primes $ abs n] where
 obj n i = sum [fromInteger (sig p)* x_ (p!!i) | p<-permutations [1..n]] where
 sig p =  product [signum $ (a-b)*(i-j) | [(a,i),(b,j)] <- asym 2 $ zip [1..] p]
 
+
+sodd n k = product [ i^bin (k-i+n-1) (n-1) | i<-[1,3..2*(k-1)+n]] * product [ i^((n-1)*bin (k-i+n-1) (n-1)) | i<- [1..k]]
+--seve n k = product [ i^(i*(2+bin (k-i-1) 2)) | i<-[1..k+1]] * product [ i^((n-1)*bin (k-i+n-1) (n-1)) | i<- [1..k]] 
+
+printmap f [] = return 0;
+printmap f (a:r) = do
+	putStr $ show a ++ ":\t"
+	print $ f a
+	printmap f r
+
