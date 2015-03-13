@@ -14,6 +14,17 @@ data NumericalPolynomial a = NumPoly {deg::a, eval::a->a}
 -- Baut numerisches Polynom aus normalem Polynom
 nupoFromPoly p = NumPoly (fromInteger $ Po.deg p) (Po.polyEval p)
 
+-- Rekonstruiert ein Polynom aus einer gegebenen Anfangssequenz von Werten
+-- (beginnend mit eval 0)
+nupoFromSequence :: Integral a => [a] ->  NumericalPolynomial a
+nupoFromSequence l = NumPoly {deg=fromIntegral $ length dl - 1, eval= ev} where
+	diffs _ [] = []
+	diffs nls x@(0:y) = diffs (nls+1) $ zipWith (-) y x
+	diffs nls x@(h:y) = h : replicate nls 0 ++ (diffs 0 $ zipWith (-) y x)
+	dl = diffs 0 l
+	ev n = sum $  [a*binomial n k | a<-dl | k<-if n<0 then [0..]else [0..n]] 
+	
+
 -- Vorwaerts-Differenzenoperator: p (n+1) - p n
 nupoDiffFor p = NumPoly{deg=deg p-1, eval= \n-> eval p (n+1)-eval p n}
 
