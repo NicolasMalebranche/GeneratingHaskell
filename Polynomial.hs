@@ -53,8 +53,8 @@ polyTop p = polyFoldT pt (-1, 0) p where
 polyDiff p = Polynomial {deg = deg p - 1, ser = seriesDiff $ ser p}
 
 -- Setzt ein Argument ein
-polyEval p x = eval 0 1 $ ser p where
-	eval i xi (Elem a ar) = if i>deg p then 0 else xi*a + eval (i+1) (xi*x) ar
+polyEval p x = eval 0 $ ser p where
+	eval i (Elem a ar) = if i>deg p then 0 else a + x * eval (i+1) ar
 instance Num a => Composeable (Polynomial a) a a where
 	(°) = polyEval
 
