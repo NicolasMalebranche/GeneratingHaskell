@@ -47,12 +47,12 @@ seriesMult (Elem afst arst) = let
 seriesInv (Elem c r) = if c == 1 then seriesInvShift r else 
 	error "Constant coefficient not 1"
 
--- Liefert 1/(1+x*r)
+-- Liefert 1/(1+t*r)
 seriesInvShift r = inv where
 	inv = Elem 1 invirr
 	invirr = fmap negate $ seriesMult r inv
 
--- Setzt das x-Fache einer Reihe ein
+-- Setzt das t-Fache einer Reihe ein
 seriesCompShift a r = co 1 a where
 	co rpower (Elem a ar) = fmap (a*) rpower + Elem 0 (co (rpower*r) ar)
 
@@ -72,7 +72,7 @@ seriesDiff (Elem s sr) = let
 -- Setzt das negative Argument ein
 seriesCompNegate (Elem s1 (Elem s2 s)) = Elem s1 $ Elem (negate s2) $ seriesCompNegate s
 
--- Multipliziert mit x^n. Falls n<0, killt die Terme mit negativen Exponenten.
+-- Multipliziert mit t^n. Falls n<0, killt die Terme mit negativen Exponenten.
 seriesShift n s@(Elem _ ar) = if n < 0 then seriesShift (n+1) ar else
 	if n == 0 then s else Elem 0 $ seriesShift (n-1) s
 
@@ -80,9 +80,20 @@ seriesShift n s@(Elem _ ar) = if n < 0 then seriesShift (n+1) ar else
 seriesCutDegree n = ct 0 where 
 	ct k (Elem a ar) = if k >= n then 0 else Elem a $ ct (k+1) ar
 
--- Schneidet unten ab. Reihe geht mit x^n los.
+-- Schneidet unten ab. Reihe geht mit t^n los.
 seriesCutOrder n = cb 0 where
 	cb k (Elem a ar) = if k>=n then Elem a ar else Elem 0 $ cb (k+1) ar
+
+-- Entwicklung der Reihe in einen J-Fraction Kettenbruch 
+-- Reihe = mu0/(1+a0*t-t²(mu1/(1+a1*t-t²(..)))
+seriesJFraction (Elem mu0 r) =  let
+	Elem _ (Elem a0 n) = seriesInvShift $ fmap (/mu0) r
+	in (a0,mu0) : seriesJFraction (negate n)
+
+-- Rekonstruiert die Reihe aus dem J-Fraction Kettenbruch
+seriesFromJFraction ((a0,mu0):l) = let
+	den = Elem a0 $ negate $ seriesFromJFraction l
+	in fmap (mu0*) $ seriesInvShift den
 
 instance (Num a) => Num (PowerSeries a) where
 	(+) = seriesZip (+)
@@ -106,7 +117,7 @@ instance (Num a, Eq a) => Composeable (PowerSeries a)(PowerSeries a)(PowerSeries
 seriesShiftedSum [] = 0
 seriesShiftedSum (Elem a ar:r) = Elem a $ ar + seriesShiftedSum r
 
--- seriesShiftedProduct [a,b,..] = (1+a*x)(1+b*x^2)..
+-- seriesShiftedProduct [a,b,..] = (1+a*t)(1+b*t^2)..
 seriesShiftedProduct = ssp 1 1 1 where
 	ssp acc t n [] = acc
 	ssp (Elem a acc) t n (s:r) = 
