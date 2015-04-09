@@ -84,16 +84,6 @@ seriesCutDegree n = ct 0 where
 seriesCutOrder n = cb 0 where
 	cb k (Elem a ar) = if k>=n then Elem a ar else Elem 0 $ cb (k+1) ar
 
--- Entwicklung der Reihe in einen J-Fraction Kettenbruch 
--- Reihe = mu0/(1+a0*t-t²(mu1/(1+a1*t-t²(..)))
-seriesJFraction (Elem mu0 r) =  let
-	Elem _ (Elem a0 n) = seriesInvShift $ fmap (/mu0) r
-	in (a0,mu0) : seriesJFraction (negate n)
-
--- Rekonstruiert die Reihe aus dem J-Fraction Kettenbruch
-seriesFromJFraction ((a0,mu0):l) = let
-	den = Elem a0 $ negate $ seriesFromJFraction l
-	in fmap (mu0*) $ seriesInvShift den
 
 instance (Num a) => Num (PowerSeries a) where
 	(+) = seriesZip (+)
