@@ -76,6 +76,12 @@ seriesCompNegate (Elem s1 (Elem s2 s)) = Elem s1 $ Elem (negate s2) $ seriesComp
 seriesShift n s@(Elem _ ar) = if n < 0 then seriesShift (n+1) ar else
 	if n == 0 then s else Elem 0 $ seriesShift (n-1) s
 
+-- Setzt t^n ein, wenn n>0.
+-- Wenn n<0, nimmt nur jeden (2-n)-ten Koeffizient
+seriesStretch n = if n>0 then ss else nn where
+	ss (Elem a ar) = Elem a $ seriesShift (n-1) $ ss ar
+	nn (Elem a ar) = Elem a $ nn $ seriesShift (n-1) ar
+
 -- Schneidet oben ab. Reihe wird Polynom vom Grad n-1
 seriesCutDegree n = ct 0 where 
 	ct k (Elem a ar) = if k >= n then 0 else Elem a $ ct (k+1) ar
@@ -83,6 +89,7 @@ seriesCutDegree n = ct 0 where
 -- Schneidet unten ab. Reihe geht mit t^n los.
 seriesCutOrder n = cb 0 where
 	cb k (Elem a ar) = if k>=n then Elem a ar else Elem 0 $ cb (k+1) ar
+
 
 instance (Num a) => Num (PowerSeries a) where
 	(+) = seriesZip (+)
