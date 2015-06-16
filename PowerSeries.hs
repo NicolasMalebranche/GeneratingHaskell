@@ -84,7 +84,6 @@ seriesCutDegree n = ct 0 where
 seriesCutOrder n = cb 0 where
 	cb k (Elem a ar) = if k>=n then Elem a ar else Elem 0 $ cb (k+1) ar
 
-
 instance (Num a) => Num (PowerSeries a) where
 	(+) = seriesZip (+)
 	(-) = seriesZip (-)
@@ -108,7 +107,7 @@ seriesShiftedSum [] = 0
 seriesShiftedSum (Elem a ar:r) = Elem a $ ar + seriesShiftedSum r
 
 -- seriesShiftedProduct [a,b,..] = (1+a*t)(1+b*t^2)..
-seriesShiftedProduct = ssp 1 1 1 where
+seriesShiftedProduct l = ssp 1 1 1 l where
 	ssp acc t n [] = acc
 	ssp (Elem a acc) t n (s:r) = 
 		Elem a $ ssp (acc+st) (t+seriesShift n st) (n+1) r where st = s*t
