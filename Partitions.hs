@@ -44,6 +44,9 @@ class (Eq a, HasTrie a) => Partition a where
 	partReduceLeft :: a -> a
 	-- Um die obere Zeile reduzierte Partition	
 	partReduceTop :: a -> a
+
+	-- Inhalte einer Partition = [j-i] fuer alle (i,j) im Ferrers Diagramm
+	partContents :: Integral i => a -> [i]
 	
 	-- Hakenlänge 
 	partHookLength :: (Int,Int) -> a -> Int
@@ -76,6 +79,7 @@ class (Eq a, HasTrie a) => Partition a where
 	partAdd :: a -> a -> a
 	-- Vereinigung zweier Partitionen
 	partUnion :: a -> a -> a
+
 
 -----------------------------------------------------------------------------------------
 
@@ -121,6 +125,7 @@ instance Partition PartitionAlpha where
 	partReduceLeft (PartAlpha (a:r)) = PartAlpha r
 	partReduceTop (PartAlpha a) = PartAlpha $ red a where 
 		red [] = []; red [1] = [] ; red [b] = [b-1]; red (b:r) = b:red r
+	partContents = partContents . partAsLambda
 	partHookLength (i,j) (PartAlpha a) = if i<1||j<1 then error "Index to small" else 
 		partHookLength (i,1) $ partAsLambda $ PartAlpha $ drop (j-1) a
 	partCorners p@(PartAlpha a) = pc (partLength p) 1 [] a where 
@@ -241,6 +246,9 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 		r [] = [] ; r (1:_) = []
 		r (a:l) = (a-1):r l
 	partReduceTop (PartLambda l) = PartLambda $ drop 1 l
+	partContents (PartLambda l) = pc 0 l where
+		pc _ [] = []
+		pc n (a:r) = [n..fromIntegral a+n-1] ++ pc (n-1) r
 	partHookLength (i,j) (PartLambda l) = let r = drop (i-1) l ; f = fromIntegral (head (r++[0])) - j 
 		in if i<1||j<1 then error "Index to small" else 
 			if f<0 then 0 else f + length (takeWhile (fromIntegral j<=) r)
