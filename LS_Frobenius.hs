@@ -60,11 +60,6 @@ sparseNub l = sn (head sl) (tail sl) where
 
 newtype K3Domain = K3 Int deriving (Enum,Eq,Num,Ord,Ix)
 instance Show K3Domain where show (K3 i) = show i
-instance HasTrie K3Domain where
-	newtype K3Domain :->: a =  TrieType { unTrieType :: Int :->: a }
-	trie f = TrieType $ trie $ f . K3
-	untrie f =  untrie (unTrieType f) (\K3 x -> x)
-	enumerate f  = map (K3) $ enumerate (unTrieType f)
 instance GradedFrobeniusAlgebra K3Domain where
 	gfa_deg (K3 0) = -2
 	gfa_deg (K3 23) = 2
