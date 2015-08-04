@@ -6,11 +6,15 @@ import Data.Array
 import Data.List
 import Data.MemoTrie
 
+-- the d. We are dealing with surfaces, so d=2.
+gfa_d = 2 :: Int
+
 class GradedFrobeniusAlgebra k where
 	gfa_deg :: k -> Int
 	gfa_base :: [k]
 	gfa_baseOfDeg :: Int -> [k]
 	gfa_1 :: Num a => [(k,a)]
+	gfa_K :: Num a => [(k,a)]
 	gfa_T :: Num a => k -> a
 	gfa_mult :: Num a => k -> k -> [(k,a)]
 	gfa_bilinear :: Num a => k -> k -> a
@@ -23,6 +27,7 @@ instance (GradedFrobeniusAlgebra k, GradedFrobeniusAlgebra k') => GradedFrobeniu
 	gfa_base = [(i,j) | i<-gfa_base, j<-gfa_base]
 	gfa_baseOfDeg n = [(i,j) | i<-gfa_base, j<-gfa_baseOfDeg (n-gfa_deg i) ]
 	gfa_1 = [((i,j),x*y) | (i,x) <- gfa_1, (j,y) <- gfa_1]
+	gfa_K = [ ((i,j),x*y) | (i,x) <- gfa_K, (j,y) <- gfa_1] ++ [ ((i,j),x*y) | (i,x) <- gfa_1, (j,y) <- gfa_K] 
 	gfa_T (i,j) = gfa_T i * gfa_T j
 	gfa_mult (i,j) (k,l) = [((m,n),ep*x*y) | (m,x)<-gfa_mult i k, (n,y)<-gfa_mult j l] where
 		ep = if odd (gfa_deg j * gfa_deg k) then (-1) else 1
@@ -44,7 +49,7 @@ gfa_adjoint f = adj where
 	ftb i = sparseNub [ (k,y*x) | (j,x) <- b i, (k,y) <- ftrans!j]
 	adj i = sparseNub [ (k,y*x) | (j,x) <- ftb i, (k,y) <- gfa_bilinearInverse j]
 
-gfa_comult :: (GradedFrobeniusAlgebra k, Ix k, Integral a) => k -> [((k,k),a)]
+gfa_comult :: (GradedFrobeniusAlgebra k, Ix k,Num a) => k -> [((k,k),a)]
 gfa_comult = gfa_adjoint (uncurry gfa_mult)
 
 gfa_euler :: (GradedFrobeniusAlgebra k, Ix k, Integral a) => [(k,a)]
@@ -58,6 +63,9 @@ sparseNub l = sn (head sl) (tail sl) where
 	sn ix [] = app ix []
 	app (i,x) r = if x==0 then r else (i,x) : r
 
+scal 0 _ = []
+scal a l = [ (p,a*x) | (p,x) <- l]
+
 newtype K3Domain = K3 Int deriving (Enum,Eq,Num,Ord,Ix)
 instance Show K3Domain where show (K3 i) = show i
 instance GradedFrobeniusAlgebra K3Domain where
@@ -66,6 +74,7 @@ instance GradedFrobeniusAlgebra K3Domain where
 	gfa_deg i = if 1<=i && i<=22 then 0 else undefined
 	
 	gfa_1 = [(0,1)]
+	gfa_K = []
 	
 	gfa_T (K3 23) = 1
 	gfa_T _ = 0
@@ -153,6 +162,7 @@ instance GradedFrobeniusAlgebra TorusDomain where
 		if i==15 then 2 else undefined
 		
 	gfa_1 = [(0,1)]
+	gfa_K = []
 	
 	gfa_T (Tor 15) = 1
 	gfa_T _ = 0
