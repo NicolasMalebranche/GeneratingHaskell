@@ -8,13 +8,45 @@ import LS_Frobenius
 import Partitions
 
 data VertexOperator k = P Int k | L Int k | Del | C k deriving (Show,Eq,Ord)
+data DelOne k = P_1 k | D deriving (Eq,Ord,Show)
+
+deldeg D = 2
+deldeg (P_1 k) = gfa_deg k
+delweight D = 0
+delweight (P_1 _) = 1
 
 
+delOne [] = [([],1)]
+delOne (Del : r) = [(D:o,x) | (o,x) <- delOne r]
+delOne (P (-1) k : r) = [(P_1 k:o,x) | (o,x) <- delOne r]
+delOne (P 0 _:_) = []
+delOne (P n k : r) = if n > 0 then undefined else 
+	scal z $ sparseNub [ (q++o, x*y) | (o,x) <- delOne r, (q,y) <- replace] where
+	replace =  ad (-1-n) (P_1 k) 
+	ad 0 p = [([p],1)]
+	ad n p = sparseNub $ [ (q++o,x*y) | (o,x)<-adi, (q,y)<-komm ] ++ 
+		[ (o++q,-x*y) | (o,x)<-adi, (q,y)<-komm ] where adi = ad (n-1) p 
+	komm = sparseNub $ [ ([D,P_1 k],x) | (k,x) <- gfa_1]++ [ ([P_1 k,D],-x) | (k,x) <- gfa_1]
+	z = recip $ fromIntegral $(-1)^(-1-n)* (product [1.. -1-n])
+
+delOne (C k : r) = sparseNub[ (q,x*y) | (o,x) <- delOne r, (q,y) <- commuteIn o] where
+	commuteIn [] = [([],1)]
+	commuteIn (D: r) = [(D:o,x) | (o,x) <- commuteIn r]
+	commuteIn (P_1 k' : r) = [(P_1 k:o,if odd (gfa_deg k*gfa_deg k')then -x else x )| (o,x) <- commuteIn r] ++ 
+		[ (o++r,x)| (o,x) <- ead ] where
+			ead = foldr ss [] $ zip ads $ [0..maxn r `div` 2] 
+			ss (ap,n) l = scal (recip $ fromIntegral $ product [1..n]) ap ++ l
+			ads = [ ([P_1 q],x) | (q,x) <- gfa_mult k k'] : map ad ads 
+			ad l = sparseNub $ [ (D:o,x)  |(o,x) <- l] ++ [(o++[D],-x) | (o,x) <- l]
+	maxn r = gfa_d * sum (map delweight r) - sum (map deldeg r) 
+	
+	
 -- Grad eines Operators mod 2
 opDeg (P _ k) = gfa_deg k
 opDeg (L _ k) = gfa_deg k + gfa_d
 opDeg Del = 2
 opDeg (C k) = gfa_deg k -- in Wahrheit inhomogen
+
 
 commSign p q = if odd $ opDeg p * opDeg q then negate else id
 
@@ -28,8 +60,9 @@ asAnBase op = [((PartLambda$ f o, s o), x) | (o,x) <- onVak op] where
 onVak [] = [([],1::Rational)]
 
 onVak [P n k] = if n>=0 then [] else [([P n k],1)]
-onVak [L n k] = [ (op nu a b,x*fromRational(1/2)) | nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k ] where
-	op nu a b = sort $ if nu < n-nu then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
+onVak [L n k] = sparseNub [(o,y*x*fromRational(1/2)) | 
+	nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k, (o,y) <-onVak $op nu a b ] where
+	op nu a b = if nu < n-nu then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
 onVak [Del] = []
 onVak [C k] = [([],1)]
 
@@ -58,9 +91,9 @@ onVak (C a : r) = sparseNub [ (t,y*x) | (q,x) <- onVak r, (t,y) <- cf q] where
 	factorial n = product [1..n]
 	binomial n k = foldl (\ b (m,i) -> div (b*m) i) 1 $ zip [n,n-1 ..] [1..k]
 
-
-
-
-
-
-
+expAdDelta cut p r = let
+	a = memo2 aa
+	aa 0 k = onVak (p:replicate k Del++r)
+	aa n k = sparseNub[(q,y*x) | (o,x)<-su, (q,y) <- onVak o] where
+		su =sparseNub $ [(Del:o, (-1)^i *x)| i<-[0..n-1], (o,x)<-a(n-i-1)(k+i)] ++ [(o,(-1)^n*x) | (o,x)<-a 0 (k+n)]
+	in [ (o, x/fromIntegral (product [1..n])) | n<-[0..cut], (o,x) <- a n 0]

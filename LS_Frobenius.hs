@@ -49,7 +49,7 @@ gfa_adjoint f = adj where
 	ftb i = sparseNub [ (k,y*x) | (j,x) <- b i, (k,y) <- ftrans!j]
 	adj i = sparseNub [ (k,y*x) | (j,x) <- ftb i, (k,y) <- gfa_bilinearInverse j]
 
-gfa_comult :: (GradedFrobeniusAlgebra k, Ix k,Num a) => k -> [((k,k),a)]
+gfa_comult :: (GradedFrobeniusAlgebra k, Ix k,Num a,Eq a) => k -> [((k,k),a)]
 gfa_comult = gfa_adjoint (uncurry gfa_mult)
 
 gfa_euler :: (GradedFrobeniusAlgebra k, Ix k, Integral a) => [(k,a)]
