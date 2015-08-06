@@ -10,8 +10,7 @@ import Partitions
 data VertexOperator k = P Int k | L Int k | Del | C k deriving (Show,Eq,Ord)
 data DelOne k = P_1 k | D deriving (Eq,Ord,Show)
 
-newtype State a k = Vak [([VertexOperator k],a)] 
-unVak (Vak x) = x
+newtype State a k = Vak { unVak:: [([VertexOperator k],a)] }
 
 weight (P n k) = -n
 weight (L n k) = -n
@@ -47,6 +46,7 @@ instance (Show a, Show k) => Show (State a k) where
 delState :: (GradedFrobeniusAlgebra k, Ord k) => [VertexOperator k] -> State Rational k
 
 delState [] = Vak [([],1)] 
+delState [Del] = Vak []
 delState (Del : r) = Vak [(Del:o,x) | (o,x) <- unVak$ delState r]
 delState (P (-1) k : r) = Vak [(P (-1) k:o,x) | (o,x) <- unVak$delState r]
 delState ob@(P n k : r) = if n >= 0 then toDel $ nakaState ob  else 
@@ -57,11 +57,12 @@ delState ob@(P n k : r) = if n >= 0 then toDel $ nakaState ob  else
 		[ (o++q,-x*y) | (o,x)<-adi, (q,y)<-komm ] where adi = ad (n-1) p 
 	komm = sparseNub $ [ ([Del,P(-1) k],x) | (k,x) <- gfa_1]++ [ ([P(-1) k,Del],-x) | (k,x) <- gfa_1]
 	z = recip $ fromIntegral $(-1)^(-1-n)* (product [1.. -1-n])
+delState ob@(L _ _ :_) = toDel $ nakaState ob
 delState (C k : r) =Vak$ sparseNub[ (q,x*y) | (o,x) <-unVak$ delState r, (q,y) <- commuteIn o] where
-	commuteIn [] = [([],1)]
+	commuteIn [] = [] -- see LiQinWang (5.6)
 	commuteIn (Del: r) = [(Del:o,x) | (o,x) <- commuteIn r]
 	commuteIn (p@(P (-1) k'):r)= sparseNub$ [(P(-1) k':o,commSign (C k) p x)| (o,x) <- commuteIn r] ++
-		[ (o++r,x*y) | (q,x) <- gfa_mult k k', (o,y) <- expAdDel (P(-1) q) r]
+		[ (o,x*y) | (q,x) <- gfa_mult k k', (o,y) <- unVak $ expAdDel (P(-1) q) r]
 
 expAdDel p r = let
 	maxpower = (gfa_d * sum (map weight r) - sum (map degree r) )`div` 2
@@ -69,7 +70,7 @@ expAdDel p r = let
 	ads = [([p],1)] : map adDel ads
 	facs = 1 : zipWith (*) [1..] facs
 	exp = zipWith (scal.recip.fromIntegral) facs ads
-	in concat $ take (maxpower+1) exp
+	in Vak [(o++r,x) | (o,x) <- concat $ take (maxpower+1) exp]
 
 
 -- Operator product acting on Vacuum. Result is given in terms of creation operators.
@@ -81,7 +82,7 @@ nakaState [L n k] = Vak$ sparseNub [(o,y*x/2) |
 	nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k, (o,y) <-unVak$nakaState $op nu a b ] where
 	op nu a b = if nu < n-nu then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
 nakaState [Del] = Vak []
-nakaState [C k] = Vak [([],1)]
+nakaState [C k] = Vak []
 
 nakaState (p@(P n k) : r)= Vak[(t,y*x) | (q,x) <- unVak$nakaState r, (t,y) <- pf q] where
 	pf (p'@(P m k'): r) = if p<=p' then [(p:p':r,1)] else 
