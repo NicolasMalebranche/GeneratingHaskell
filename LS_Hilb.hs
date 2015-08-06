@@ -10,90 +10,99 @@ import Partitions
 data VertexOperator k = P Int k | L Int k | Del | C k deriving (Show,Eq,Ord)
 data DelOne k = P_1 k | D deriving (Eq,Ord,Show)
 
-deldeg D = 2
-deldeg (P_1 k) = gfa_deg k
-delweight D = 0
-delweight (P_1 _) = 1
+newtype State a k = Vak [([VertexOperator k],a)] 
+unVak (Vak x) = x
+
+weight (P n k) = -n
+weight (L n k) = -n
+weight Del = 0
+weight (C k) = 0
+
+degree (P n k) = gfa_deg k
+degree (L n k) = gfa_deg k + gfa_d
+degree Del = 2
+
+degMod2 (P n k) = gfa_deg k `mod`2
+degMod2 (L n k) = (gfa_deg k + gfa_d) `mod`2
+degMod2 Del = 2
+degMod2 (C k) = gfa_deg k `mod` 2
 
 
-delOne [] = [([],1)]
-delOne (Del : r) = [(D:o,x) | (o,x) <- delOne r]
-delOne (P (-1) k : r) = [(P_1 k:o,x) | (o,x) <- delOne r]
-delOne (P 0 _:_) = []
-delOne (P n k : r) = if n > 0 then undefined else 
-	scal z $ sparseNub [ (q++o, x*y) | (o,x) <- delOne r, (q,y) <- replace] where
-	replace =  ad (-1-n) (P_1 k) 
+showOperatorList [] = "|0>"
+showOperatorList (Del:r) = "D " ++ showOperatorList r
+showOperatorList (P n k:r) = sh ++ showOperatorList r where
+	sh = (if n<0 then "p_"++show(-n)else "p"++show n)++"("++show k++") "
+showOperatorList (L n k:r) = sh ++ showOperatorList r where
+	sh = (if n<0 then "L_"++show(-n)else "L"++show n)++"("++show k++") "
+showOperatorList (C k:r) = show k++ "[*] " ++ showOperatorList r 
+
+instance (Show a, Show k) => Show (State a k) where
+	show (Vak []) = "0"
+	show (Vak [(l,x)]) = show x ++ " * \t"++showOperatorList l
+	show (Vak ((l,x):r)) = show x ++ " * \t"++showOperatorList l ++ "\n"++show(Vak r) 
+
+
+
+-- Operator product acting on Vacuum. Result is given in terms of deltas and P(-1) operators.
+delState :: (GradedFrobeniusAlgebra k, Ord k) => [VertexOperator k] -> State Rational k
+
+delState [] = Vak [([],1)] 
+delState (Del : r) = Vak [(Del:o,x) | (o,x) <- unVak$ delState r]
+delState (P (-1) k : r) = Vak [(P (-1) k:o,x) | (o,x) <- unVak$delState r]
+delState ob@(P n k : r) = if n >= 0 then toDel $ nakaState ob  else 
+	Vak $  scal z $ sparseNub [ (q++o, x*y) | (o,x) <- unVak $delState r, (q,y) <- replace] where
+	replace =  ad (-1-n) (P (-1) k) 
 	ad 0 p = [([p],1)]
 	ad n p = sparseNub $ [ (q++o,x*y) | (o,x)<-adi, (q,y)<-komm ] ++ 
 		[ (o++q,-x*y) | (o,x)<-adi, (q,y)<-komm ] where adi = ad (n-1) p 
-	komm = sparseNub $ [ ([D,P_1 k],x) | (k,x) <- gfa_1]++ [ ([P_1 k,D],-x) | (k,x) <- gfa_1]
+	komm = sparseNub $ [ ([Del,P(-1) k],x) | (k,x) <- gfa_1]++ [ ([P(-1) k,Del],-x) | (k,x) <- gfa_1]
 	z = recip $ fromIntegral $(-1)^(-1-n)* (product [1.. -1-n])
-
-delOne (C k : r) = sparseNub[ (q,x*y) | (o,x) <- delOne r, (q,y) <- commuteIn o] where
+delState (C k : r) =Vak$ sparseNub[ (q,x*y) | (o,x) <-unVak$ delState r, (q,y) <- commuteIn o] where
 	commuteIn [] = [([],1)]
-	commuteIn (D: r) = [(D:o,x) | (o,x) <- commuteIn r]
-	commuteIn (P_1 k' : r) = [(P_1 k:o,if odd (gfa_deg k*gfa_deg k')then -x else x )| (o,x) <- commuteIn r] ++ 
-		[ (o++r,x)| (o,x) <- ead ] where
-			ead = foldr ss [] $ zip ads $ [0..maxn r `div` 2] 
-			ss (ap,n) l = scal (recip $ fromIntegral $ product [1..n]) ap ++ l
-			ads = [ ([P_1 q],x) | (q,x) <- gfa_mult k k'] : map ad ads 
-			ad l = sparseNub $ [ (D:o,x)  |(o,x) <- l] ++ [(o++[D],-x) | (o,x) <- l]
-	maxn r = gfa_d * sum (map delweight r) - sum (map deldeg r) 
-	
-	
--- Grad eines Operators mod 2
-opDeg (P _ k) = gfa_deg k
-opDeg (L _ k) = gfa_deg k + gfa_d
-opDeg Del = 2
-opDeg (C k) = gfa_deg k -- in Wahrheit inhomogen
+	commuteIn (Del: r) = [(Del:o,x) | (o,x) <- commuteIn r]
+	commuteIn (p@(P (-1) k'):r)= sparseNub$ [(P(-1) k':o,commSign (C k) p x)| (o,x) <- commuteIn r] ++
+		[ (o++r,x*y) | (q,x) <- gfa_mult k k', (o,y) <- expAdDel (P(-1) q) r]
+
+expAdDel p r = let
+	maxpower = (gfa_d * sum (map weight r) - sum (map degree r) )`div` 2
+	adDel l = sparseNub$ [ (Del:o,x)|(o,x) <- l] ++ [ (o++[Del],-x)|(o,x) <- l] 
+	ads = [([p],1)] : map adDel ads
+	facs = 1 : zipWith (*) [1..] facs
+	exp = zipWith (scal.recip.fromIntegral) facs ads
+	in concat $ take (maxpower+1) exp
 
 
-commSign p q = if odd $ opDeg p * opDeg q then negate else id
+-- Operator product acting on Vacuum. Result is given in terms of creation operators.
+nakaState :: (GradedFrobeniusAlgebra k, Ord k) => [VertexOperator k] -> State Rational k
 
-
---onVak :: (Fractional a, Eq a, GradedFrobeniusAlgebra k, Ord k) => [VertexOperator k] -> [([VertexOperator k],a)]
-
-asAnBase op = [((PartLambda$ f o, s o), x) | (o,x) <- onVak op] where
-	f l = [ -n | P n _ <- l]
-	s l = [ k  | P _ k <- l]
-
-onVak [] = [([],1::Rational)]
-
-onVak [P n k] = if n>=0 then [] else [([P n k],1)]
-onVak [L n k] = sparseNub [(o,y*x*fromRational(1/2)) | 
-	nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k, (o,y) <-onVak $op nu a b ] where
+nakaState [] = Vak [([],1)]
+nakaState [P n k] = Vak$ if n>=0 then [] else [([P n k],1)]
+nakaState [L n k] = Vak$ sparseNub [(o,y*x/2) | 
+	nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k, (o,y) <-unVak$nakaState $op nu a b ] where
 	op nu a b = if nu < n-nu then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
-onVak [Del] = []
-onVak [C k] = [([],1)]
+nakaState [Del] = Vak []
+nakaState [C k] = Vak [([],1)]
 
-onVak (p@(P n k) : r) = [ (t,y*x) | (q,x) <- onVak r, (t,y) <- pf q] where
+nakaState (p@(P n k) : r)= Vak[(t,y*x) | (q,x) <- unVak$nakaState r, (t,y) <- pf q] where
 	pf (p'@(P m k'): r) = if p<=p' then [(p:p':r,1)] else 
-		[(p':o,commSign p p' x) | (o,x) <- onVak (p:r)] ++ 
+		[(p':o,commSign p p' x) | (o,x) <- unVak$nakaState (p:r)] ++ 
 			if n+m==0 && x/=0 then [(r,x)] else [] where x=fromIntegral n * gfa_bilinear k k'
 
-onVak (l@(L n k) : r) = sparseNub [ (t,y*x) | (q,x) <- onVak r, (t,y) <- lf q] where
-	lf (p@(P m k'):r) = [ (sort $ p:o, commSign p l x) | (o,x) <- onVak (l:r)] ++ 
-		[ (o, fromIntegral(-m)*y*x) | (kk,x) <- gfa_mult k k', (o,y) <- onVak (P (n+m) kk : r)]
+nakaState (l@(L n k) : r) = Vak$sparseNub [ (t,y*x) | (q,x) <-unVak$nakaState r, (t,y) <- lf q] where
+	lf (p@(P m k'):r) = [ (o, commSign l p x) | (o,x) <- unVak$nakaState (p:l:r)] ++ 
+		[ (o, fromIntegral(-m)*y*x) | (kk,x) <- gfa_mult k k', (o,y) <- unVak$nakaState$ P (n+m) kk : r]
 
-onVak (Del : r) = sparseNub [ (t,y*x) | (q,x) <- onVak r, (t,y) <- df q] where
-	df (p@(P n k):r) = [ (sort $ p:o,x) | (o,x) <- onVak (Del:r)] ++ 
-		[ (o,fromIntegral(n)*x) | (o,x) <- onVak (L n k : r)] ++
-		scal bin [ (o,y*x) | (kk,x) <- ka , (o,y) <- onVak (P n kk : r)] where
+nakaState (Del : r) = Vak$sparseNub [ (t,y*x) | (q,x) <- unVak$nakaState r, (t,y) <- df q] where
+	df (p@(P n k):r) = sparseNub$ [ (o,x) | (o,x) <- unVak$nakaState (p:Del:r)] ++ 
+		[ (o,fromIntegral n*x) | (o,x) <- unVak$nakaState (L n k : r)] ++
+		scal bin [ (o,y*x) | (kk,x) <- ka , (o,y) <- unVak$nakaState (P n kk : r)] where
 			bin = fromIntegral $ div (-n*(abs n - 1)) 2
 			ka = sparseNub [ (kk, y*x) | (k',x) <- gfa_K, (kk,y) <- gfa_mult k' k]
 
-onVak (C a : r) = sparseNub [ (t,y*x) | (q,x) <- onVak r, (t,y) <- cf q] where
-	cf (q@(p@(P n k):r)) = [ (sort $ p:o,x) | (o,x) <- onVak (C a:r)] ++ commutator where
-		commutator =  []--if n == -1 then [ (o,x*y*z*f j)| j<- [0..maxpower], (ka,y)<-gfa_mult a k, (op,x) <- diff j (P (-1) ka), (o,z) <-onVak (op++r)] else[]
-		f k = fromRational (1/factorial k)
-		maxpower = sum [ -n*gfa_d - gfa_deg k | P n k <- q] `div` 2
-		diff k op = [ (replicate (k-i) Del ++ [op] ++ replicate i Del, (-1)^i * binomial k i) | i<-[0..k]] 
-	factorial n = product [1..n]
-	binomial n k = foldl (\ b (m,i) -> div (b*m) i) 1 $ zip [n,n-1 ..] [1..k]
+nakaState (ob@(C _:r)) = toNaka $ delState ob
 
-expAdDelta cut p r = let
-	a = memo2 aa
-	aa 0 k = onVak (p:replicate k Del++r)
-	aa n k = sparseNub[(q,y*x) | (o,x)<-su, (q,y) <- onVak o] where
-		su =sparseNub $ [(Del:o, (-1)^i *x)| i<-[0..n-1], (o,x)<-a(n-i-1)(k+i)] ++ [(o,(-1)^n*x) | (o,x)<-a 0 (k+n)]
-	in [ (o, x/fromIntegral (product [1..n])) | n<-[0..cut], (o,x) <- a n 0]
+commSign p q = if odd $ degMod2 p * degMod2 q then negate else id
+
+-- Transforms state representations
+toDel (Vak l)  = Vak $ sparseNub[ (p,x*y)|(o,x) <- l, (p,y) <- unVak$delState o] 
+toNaka (Vak l) = Vak $ sparseNub[ (p,x*y)|(o,x) <- l, (p,y) <- unVak$nakaState o] 

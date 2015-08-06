@@ -9,7 +9,7 @@ import Data.MemoTrie
 -- the d. We are dealing with surfaces, so d=2.
 gfa_d = 2 :: Int
 
-class GradedFrobeniusAlgebra k where
+class (Ix k,Ord k)=> GradedFrobeniusAlgebra k where
 	gfa_deg :: k -> Int
 	gfa_base :: [k]
 	gfa_baseOfDeg :: Int -> [k]
