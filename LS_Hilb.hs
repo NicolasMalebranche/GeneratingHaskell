@@ -7,24 +7,20 @@ import Data.MemoTrie
 import LS_Frobenius
 import Partitions
 
-data VertexOperator k = P Int k | L Int k | Del | C k deriving (Show,Eq,Ord)
-data DelOne k = P_1 k | D deriving (Eq,Ord,Show)
+data VertexOperator k = P Int k | L Int k | Del | Ch Int k deriving (Show,Eq,Ord)
 
 newtype State a k = Vak { unVak:: [([VertexOperator k],a)] }
 
 weight (P n k) = -n
 weight (L n k) = -n
 weight Del = 0
-weight (C k) = 0
+weight (Ch n k) = 0
 
 degree (P n k) = gfa_deg k
 degree (L n k) = gfa_deg k + gfa_d
 degree Del = 2
+degree (Ch n k) = gfa_deg k + 2*n
 
-degMod2 (P n k) = gfa_deg k `mod`2
-degMod2 (L n k) = (gfa_deg k + gfa_d) `mod`2
-degMod2 Del = 2
-degMod2 (C k) = gfa_deg k `mod` 2
 
 
 showOperatorList [] = "|0>"
@@ -33,7 +29,7 @@ showOperatorList (P n k:r) = sh ++ showOperatorList r where
 	sh = (if n<0 then "p_"++show(-n)else "p"++show n)++"("++show k++") "
 showOperatorList (L n k:r) = sh ++ showOperatorList r where
 	sh = (if n<0 then "L_"++show(-n)else "L"++show n)++"("++show k++") "
-showOperatorList (C k:r) = show k++ "[*] " ++ showOperatorList r 
+showOperatorList (Ch n k:r) = "ch"++show n++"["++show k++ "] " ++ showOperatorList r 
 
 instance (Show a, Show k) => Show (State a k) where
 	show (Vak []) = "0"
@@ -58,19 +54,15 @@ delState ob@(P n k : r) = if n >= 0 then toDel $ nakaState ob  else
 	komm = sparseNub $ [ ([Del,P(-1) k],x) | (k,x) <- gfa_1]++ [ ([P(-1) k,Del],-x) | (k,x) <- gfa_1]
 	z = recip $ fromIntegral $(-1)^(-1-n)* (product [1.. -1-n])
 delState ob@(L _ _ :_) = toDel $ nakaState ob
-delState (C k : r) =Vak$ sparseNub[ (q,x*y) | (o,x) <-unVak$ delState r, (q,y) <- commuteIn o] where
+delState (ch@(Ch n k) : r) =Vak$ sparseNub[ (q,x*y) | (o,x) <-unVak$ delState r, (q,y) <- commuteIn o] where
 	commuteIn [] = [] -- see LiQinWang (5.6)
+	commuteIn [Del] = []
 	commuteIn (Del: r) = [(Del:o,x) | (o,x) <- commuteIn r]
-	commuteIn (p@(P (-1) k'):r)= sparseNub$ [(P(-1) k':o,commSign (C k) p x)| (o,x) <- commuteIn r] ++
-		[ (o,x*y) | (q,x) <- gfa_mult k k', (o,y) <- unVak $ expAdDel (P(-1) q) r]
-
-expAdDel p r = let
-	maxpower = (gfa_d * sum (map weight r) - sum (map degree r) )`div` 2
-	adDel l = sparseNub$ [ (Del:o,x)|(o,x) <- l] ++ [ (o++[Del],-x)|(o,x) <- l] 
-	ads = [([p],1)] : map adDel ads
-	facs = 1 : zipWith (*) [1..] facs
-	exp = zipWith (scal.recip.fromIntegral) facs ads
-	in Vak [(o++r,x) | (o,x) <- concat $ take (maxpower+1) exp]
+	commuteIn (p@(P (-1) k'):r)= sparseNub$ [(p:o,commSign ch p x)| (o,x) <- commuteIn r] ++
+		[(o++r,ifac*x*y) | (q,x) <- gfa_mult k k', (o,y) <- adDel n (P(-1) q) ]
+	adDel n p = if n==0 then [([p],1)] else
+		if n>0 then sparseNub$ [ t |(o,x) <- adDel (n-1) p, t<-[(Del:o,x),(o++[Del],-x)]] else []
+	ifac = recip$ fromIntegral$ product [1..n]
 
 
 -- Operator product acting on Vacuum. Result is given in terms of creation operators.
@@ -82,7 +74,6 @@ nakaState [L n k] = Vak$ sparseNub [(o,y*x/2) |
 	nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k, (o,y) <-unVak$nakaState $op nu a b ] where
 	op nu a b = if nu < n-nu then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
 nakaState [Del] = Vak []
-nakaState [C k] = Vak []
 
 nakaState (p@(P n k) : r)= Vak[(t,y*x) | (q,x) <- unVak$nakaState r, (t,y) <- pf q] where
 	pf (p'@(P m k'): r) = if p<=p' then [(p:p':r,1)] else 
@@ -100,9 +91,9 @@ nakaState (Del : r) = Vak$sparseNub [ (t,y*x) | (q,x) <- unVak$nakaState r, (t,y
 			bin = fromIntegral $ div (-n*(abs n - 1)) 2
 			ka = sparseNub [ (kk, y*x) | (k',x) <- gfa_K, (kk,y) <- gfa_mult k' k]
 
-nakaState (ob@(C _:r)) = toNaka $ delState ob
+nakaState (ob@(Ch _ _:r)) = toNaka $ delState ob
 
-commSign p q = if odd $ degMod2 p * degMod2 q then negate else id
+commSign p q = if odd $ degree p * degree q then negate else id
 
 -- Transforms state representations
 toDel (Vak l)  = Vak $ sparseNub[ (p,x*y)|(o,x) <- l, (p,y) <- unVak$delState o] 
