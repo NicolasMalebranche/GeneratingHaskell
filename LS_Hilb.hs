@@ -2,10 +2,7 @@
 module LS_Hilb
 	where
 
-import Data.List
-import Data.MemoTrie
 import LS_Frobenius
-import Partitions
 
 data VertexOperator k = P Int k | L Int k | Del | Ch Int k deriving (Show,Eq,Ord)
 
@@ -98,3 +95,12 @@ commSign p q = if odd $ degree p * degree q then negate else id
 -- Transforms state representations
 toDel (Vak l)  = Vak $ sparseNub[ (p,x*y)|(o,x) <- l, (p,y) <- unVak$delState o] 
 toNaka (Vak l) = Vak $ sparseNub[ (p,x*y)|(o,x) <- l, (p,y) <- unVak$nakaState o] 
+
+scale a (Vak sta) = Vak $ scal a sta
+add (Vak s) (Vak t) = Vak $ sparseNub $ s ++ t
+
+multLists [] stat = stat
+multLists (l:r) stat = let 
+	Vak s = multLists r stat
+	ns = sparseNub[ (t,x*y*z) | (a,x) <- s, (o,y) <- l, (t,z)<- unVak $ nakaState (o:a) ]
+	in Vak ns
