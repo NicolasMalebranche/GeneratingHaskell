@@ -31,7 +31,7 @@ showOperatorList (Ch n k:r) = "ch"++show n++"["++show k++ "] " ++ showOperatorLi
 instance (Show a, Show k) => Show (State a k) where
 	show (Vak []) = "0"
 	show (Vak [(l,x)]) = show x ++ " * \t"++showOperatorList l
-	show (Vak ((l,x):r)) = show x ++ " * \t"++showOperatorList l ++ "\n"++show(Vak r) 
+	show (Vak ((l,x):r)) = show x ++ " * \t"++showOperatorList l ++ " +\n"++show(Vak r) 
 
 
 
@@ -102,5 +102,5 @@ add (Vak s) (Vak t) = Vak $ sparseNub $ s ++ t
 multLists [] stat = stat
 multLists (l:r) stat = let 
 	Vak s = multLists r stat
-	ns = sparseNub[ (t,x*y*z) | (a,x) <- s, (o,y) <- l, (t,z)<- unVak $ nakaState (o:a) ]
+	ns = sparseNub[ (t,x*y*z) | (a,x) <- s, (o,y) <- l, (t,z)<- unVak $ nakaState (o++a) ]
 	in Vak ns
