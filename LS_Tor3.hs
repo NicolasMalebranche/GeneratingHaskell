@@ -98,7 +98,11 @@ td3 = th_del_3 `add`  -- divisible by 12
 	scale (4) (multLists [d, j 6, j 9] one) `add` 
 	scale (-4) (multLists [d, j 7, j 8] one)
 
-	
-
-
+-- second chern class of tautological sheaf = p_3(1)/3 *
+c2 = scal (1%3) [([Ch 1 (Tor 0),Ch 1 (Tor 0)],1), 
+	([Ch 0 1, Ch 0 14],1), ([Ch 0 13, Ch 0 2],1), ([Ch 0 3, Ch 0 12],1), ([Ch 0 11, Ch 0 4],1), 
+	([Ch 0 5, Ch 0 10],-1), ([Ch 0 6, Ch 0 9],1), ([Ch 0 7, Ch 0 8],-1),
+	([Ch 0 15],-3) ]
+-- 12* c2^2 == d^4
+-- 0 == multLists [c2,c2] one `add` scale (-1%12) (multLists [d,d,d,d] one)
 	
