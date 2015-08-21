@@ -5,6 +5,7 @@ module LS_Tor3
 import LS_Frobenius
 import LS_Hilb
 import Data.Ratio
+import Data.List
 
 pairing a b = case multLists [a] b of 
 	Vak [ ([P (-1) (Tor 15) ,P (-1) (Tor 15) ,P (-1) (Tor 15) ] , a) ] -> a
@@ -18,24 +19,24 @@ l 3 = [ [([Ch 1 a],1)] | a<-[1..4]]++ [ [([Ch 0 a,Ch 1 0],1)] | a<-[1..4]]++
 	[ [([Ch 0 a,Ch 0 b, Ch 0 c],1)] | a<-[1..4],b<-[a+1..4], c<-[b+1..4]] ++
 	[ [([Ch 0 a,Ch 0 b],1)] | a<-[1..4],b<-[5..10]] ++
 	[ [([Ch 0 a],1)] | a<-[11..14]] 
-l 4 = 
-	--[ [([Ch 0 a,Ch 0 b],1)] | a<-[5..10],b<-[a..10]] ++
-	--[ [([Ch 0 a,Ch 0 b, Ch 0 c],1)] | a<-[1..4],b<-[a+1..4], c<-[5..10]] ++
-	--[ [([Ch 1 a],1)] | a<-[5..10]] ++ [ [([Ch 0 a,Ch 1 0],1)] | a<-[5..10]] ++
-	--[ [([Ch 1 a,Ch 0 b],1)] | a<-[1..4], b<-[1..4]] ++ 
+l 4 = [[([Ch 2 0],2)] ] ++
+	[ [([Ch 0 a,Ch 0 b],1)] | a<-[5..10],b<-[a..10]] ++
+	[ [([Ch 0 a,Ch 0 b, Ch 0 c],1)] | a<-[1..4],b<-[a+1..4], c<-[5..10]] ++
+	[ [([Ch 1 a],1)] | a<-[5..10]] ++ [ [([Ch 0 a,Ch 1 0],1)] | a<-[5..10]] ++
+	[ [([Ch 1 a,Ch 0 b],1)] | a<-[1..4], b<-[1..4]] ++ 
 	[ [([Ch 0 a,Ch 0 b],1)] | a<-[1..4],b<-[11..14],a+b/=15]  ++
-	--[ [([Ch 0 a,Ch 0 (15-a)],1)] | a<-[1..4]] ++
-	[ [([Ch 2 0],1)] , j 15] 
+	[ [([Ch 0 a,Ch 0 (15-a)],1)] | a<-[1..4]] ++
+	[  j 15] 
 
 
-l 8 = 
-	--[ [([Ch 0 a,Ch 0 b, Ch 0 15],1)] | a<-[10,9..5],b<-[a,a-1..5]] ++
-	--[ [([Ch 0 a,Ch 0 b, Ch 0 c],1)] | a<-[14,13..11],b<-[a-1,a-2..11], c<-[10,9..5]] ++
-	--[ [([Ch 1 a, Ch 0 15],1)] | a<-[10,9..5]] ++ [ [([Ch 0 a,Ch 1 0, Ch 0 15],1)] | a<-[10,9..5]]++
-	--[ [([Ch 1 a,Ch 0 b],1)] | a<-[14,13..11], b<-[14,13..11]] ++
+l 8 = [ [([Ch 2 15],2)] ] ++
+	[ [([Ch 0 a,Ch 0 b, Ch 0 15],1)] | a<-[10,9..5],b<-[a,a-1..5]] ++
+	[ [([Ch 0 a,Ch 0 b, Ch 0 c],1)] | a<-[14,13..11],b<-[a-1,a-2..11], c<-[10,9..5]] ++
+	[ [([Ch 1 a, Ch 0 15],1)] | a<-[10,9..5]] ++ [ [([Ch 0 a,Ch 1 0, Ch 0 15],1)] | a<-[10,9..5]]++
+	[ [([Ch 1 a,Ch 0 b],1)] | a<-[14,13..11], b<-[14,13..11]] ++
 	[ [([Ch 0 a,Ch 0 b,Ch 2 0 ],1)] | a<-[14,13..11],b<-[4,3..1], a+b /= 15] ++
-	--[ [([Ch 0 15,Ch 0 a,Ch 0 (15-a)],1),([Ch 2 0,Ch 0 15],1)] | a<-[4,3..1]] ++
-	[ [([Ch 2 15],1)] , [([Ch 0 15,Ch 0 15],1)]]
+	[ [([Ch 0 15,Ch 0 a,Ch 0 (15-a)],1)] | a<-[1..4]] ++
+	[ [([Ch 0 15,Ch 0 15],1)]]
 
 l 10 = [([Ch 3 15],1%1)]  : [ [([Ch 0 a,Ch 0 b,Ch 0 15],1%1)] | a<-[14,13,12,11],b<-[a-1,a-2..11]] ++ 
 	[ [([Ch 0 a,Ch 0 15,Ch 0 15],1%1)] | a<-[10,9..5]] 
@@ -55,7 +56,7 @@ gramSchmidt (l:ls) (x:xs) = scal (recip $pairing or x) or : los where
 
 one = scale (1%6) $ nakaState $ replicate 3 $ P (-1) (Tor 0)
 
-d = [([Del],-1%1)]
+d = [([Ch 1 (Tor 0)],-1%1)]
 j a = [([Ch 0 a],1%1)]
 
 h a = [([Ch 1 a], 1%1)]
@@ -105,4 +106,40 @@ c2 = scal (1%3) [([Ch 1 (Tor 0),Ch 1 (Tor 0)],1),
 	([Ch 0 15],-3) ]
 -- 12* c2^2 == d^4
 -- 0 == multLists [c2,c2] one `add` scale (-1%12) (multLists [d,d,d,d] one)
-	
+
+
+bogo [Ch 0 (Tor 5)] [Ch 0 (Tor 10)] = 1
+bogo [Ch 0 (Tor 6)] [Ch 0 (Tor 9)] = -1
+bogo [Ch 0 (Tor 7)] [Ch 0 (Tor 8)] = 1
+bogo [Ch 0 (Tor 8)] [Ch 0 (Tor 7)] = 1
+bogo [Ch 0 (Tor 9)] [Ch 0 (Tor 6)] = -1
+bogo [Ch 0 (Tor 10)] [Ch 0 (Tor 5)] = 1
+bogo [Ch 1 (Tor 0)] [Ch 1 (Tor 0)] = 6
+bogo _ _ = 0
+
+bogoSym (a:b:c:d:r) = 3 * ( bogo [a] [b]*bogo [c] [d] + bogo [a] [c]*bogo [b] [d] + bogo [a] [d]*bogo [b] [c] )
+
+sym4 = [(a++b++c++d,u*v*w*x)|i<- [0..6], j<-[i..6], k<-[j..6], m<-[k..6], let [(a,u)] = ll!!i, let [(b,v)]=ll!!j, let [(c,w)]= ll!!k, let [(d,x)]=ll!!m] where
+	ll = d : [ [([Ch 0 a],1%1)] | a<-[5..10]] 
+
+
+writeM = writeFile ("Matrix.txt") m where
+	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) sym4) ++"\n];;\n"
+	col s = [ if denominator p == 1 then numerator p else error "jj"| t <- bs, let p=pairing [s] t ]
+	bs = bas 4
+
+writeV = writeFile ("Vector.txt") m where
+	m = "b:= \n" ++show x ++"\n;;\n"
+	x = [numerator $ i* bogoSym s | (s,i) <- sym4 ]
+
+mayK = scale (-39/8) (bas 4!!0) `add` 
+	scale (9/16) (bas 4!!98) `add` 
+	scale (-9/16) (bas 4!!99) `add` 
+	scale (9/16) (bas 4!!100) `add` 
+	scale (-9/16) (bas 4!!101) `add` 
+	scale (81/4) (bas 4!!102)-- `add` 
+	--scale (33/7) (bas 4!!13) `add` 
+	--scale (-4/7) (bas 4!!27) `add` 
+	--scale (4/7) (bas 4!!32) `add` 
+	--scale (-4/7) (bas 4!!37) 
+
