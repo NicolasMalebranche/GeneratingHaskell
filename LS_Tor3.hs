@@ -122,24 +122,31 @@ bogoSym (a:b:c:d:r) = 3 * ( bogo [a] [b]*bogo [c] [d] + bogo [a] [c]*bogo [b] [d
 sym4 = [(a++b++c++d,u*v*w*x)|i<- [0..6], j<-[i..6], k<-[j..6], m<-[k..6], let [(a,u)] = ll!!i, let [(b,v)]=ll!!j, let [(c,w)]= ll!!k, let [(d,x)]=ll!!m] where
 	ll = d : [ [([Ch 0 a],1%1)] | a<-[5..10]] 
 
+zer = [(a++b++c++d,u*v*w*x)|i<- [0..3], j<-[i+1..3], let [(a,u)] = l 1!!i, let [(b,v)]=l 1!!j, [(c,w)] <-l 2, [(d,x)]<-l 4] 
+
 
 writeM = writeFile ("Matrix.txt") m where
-	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) sym4) ++"\n];;\n"
-	col s = [ if denominator p == 1 then numerator p else error "jj"| t <- bs, let p=pairing [s] t ]
+	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) (sym4++zer)) ++"\n];;\n"
+	col s = [p| t <- bs, let p=pairing [s] t ]
 	bs = bas 4
 
 writeV = writeFile ("Vector.txt") m where
 	m = "b:= \n" ++show x ++"\n;;\n"
-	x = [numerator $ i* bogoSym s | (s,i) <- sym4 ]
+	x = [numerator $ i* bogoSym s | (s,i) <- sym4 ] ++ replicate 8034 0
 
-mayK = scale (-39/8) (bas 4!!0) `add` 
-	scale (9/16) (bas 4!!98) `add` 
-	scale (-9/16) (bas 4!!99) `add` 
-	scale (9/16) (bas 4!!100) `add` 
-	scale (-9/16) (bas 4!!101) `add` 
-	scale (81/4) (bas 4!!102)-- `add` 
-	--scale (33/7) (bas 4!!13) `add` 
-	--scale (-4/7) (bas 4!!27) `add` 
-	--scale (4/7) (bas 4!!32) `add` 
-	--scale (-4/7) (bas 4!!37) 
+-- Kohomologieklasse der verallgemeinerten Kummerschen
+mayK = scale (-1) (bas 4!!6) `add` 
+	scale (1) (bas 4!!10) `add` 
+	scale (-1) (bas 4!!13) `add` 
+	scale (1) (bas 4!!27) `add` 
+	scale (-1) (bas 4!!32) `add` 
+	scale (1) (bas 4!!37) `add` 
+	scale (1) (bas 4!!42) `add` 
+	scale (-1) (bas 4!!47) `add` 
+	scale (1) (bas 4!!52) `add` 
+	scale (-2) (bas 4!!98) `add` 
+	scale (2) (bas 4!!99) `add` 
+	scale (-2) (bas 4!!100) `add` 
+	scale (2) (bas 4!!101) `add` 
+	scale (6) (bas 4!!102) 
 
