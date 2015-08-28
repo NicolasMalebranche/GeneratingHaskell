@@ -135,6 +135,7 @@ writeV = writeFile ("Vector.txt") m where
 	x = [numerator $ i* bogoSym s | (s,i) <- sym4 ] ++ replicate 8034 0
 
 -- Kohomologieklasse der verallgemeinerten Kummerschen
+-- == multLists [j 1, j 2, j 3, j 4] one
 mayK = scale (-1) (bas 4!!6) `add` 
 	scale (1) (bas 4!!10) `add` 
 	scale (-1) (bas 4!!13) `add` 
