@@ -151,3 +151,12 @@ mayK = scale (-1) (bas 4!!6) `add`
 	scale (2) (bas 4!!101) `add` 
 	scale (6) (bas 4!!102) 
 
+
+-- Tangentialbündel
+c2Tang = (scale (3%2) $ foldr add (Vak []) [ scale x $ nakaState (P (-1) 0: map (P (-1))r)  | (r,x) <- gfa_comultN 2 (Tor 0)]) `add` 
+	(scale (-1%3) $ nakaState [P (-3) 0] )
+-- = multLists [[([Ch 2 0],10),([Ch 1 0, Ch 1 0],-2) ]] one
+c4Tang = scale (4%3) $ foldr add (Vak []) [ scale x $ nakaState (map (P (-1))r)  | (r,x) <- gfa_comultN 3 (Tor 0)]
+
+
+

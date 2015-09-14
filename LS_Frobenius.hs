@@ -52,6 +52,11 @@ gfa_adjoint f = adj where
 gfa_comult :: (GradedFrobeniusAlgebra k, Ix k,Num a,Eq a) => k -> [((k,k),a)]
 gfa_comult = gfa_adjoint (uncurry gfa_mult)
 
+gfa_comultN 1 a = [([a],1)]
+gfa_comultN n a = let
+	rec = gfa_comultN (n-1) a
+	in sparseNub [ (c:d:r, x*y) | (b:r,x) <- rec, ((c,d),y) <- gfa_comult b]
+
 gfa_euler :: (GradedFrobeniusAlgebra k, Ix k, Integral a) => [(k,a)]
 gfa_euler = [(k,fromIntegral x) | (k,x)<-e] where 
 	e = sparseNub [ (k,y*x*v) | (u,v) <- gfa_1, (ij,x) <- gfa_comult u, (k,y) <- uncurry gfa_mult ij] 
