@@ -4,22 +4,22 @@ module LS_Operators
 
 import LS_Frobenius
 
-data VertexOperator k = P Int k | L Int k | Del | S Int k | SV Int k | ChT Int deriving (Show,Eq,Ord)
+data VertexOperator k = P Int k | L Int k | Del | Ch Int k | GV Int k | ChT Int deriving (Show,Eq,Ord)
 
 newtype State a k = Vak { unVak:: [([VertexOperator k],a)] }
 
 weight (P n _) = -n
 weight (L n _) = -n
 weight Del = 0
-weight (S _ _) = 0
-weight (SV _ _) = 0
+weight (Ch _ _) = 0
+weight (GV _ _) = 0
 weight (ChT _) = 0
 
 degree (P n k) = gfa_deg k
 degree (L n k) = gfa_deg k + gfa_d
 degree Del = 2
-degree (S n k) = gfa_deg k + 2*n
-degree (SV n k) = gfa_deg k + 2*n
+degree (Ch n k) = gfa_deg k + 2*n
+degree (GV n k) = gfa_deg k + 2*n
 degree (ChT n) = 2*n
 
 
@@ -29,8 +29,8 @@ actsOn (P (-1) _) = Both
 actsOn (P _ _) = NakaState
 actsOn (L _ _) = NakaState
 actsOn Del = Both
-actsOn (S _ _) = DelState
-actsOn (SV _ _) = DelState
+actsOn (Ch _ _) = DelState
+actsOn (GV _ _) = DelState
 actsOn (ChT _) = DelState
 
 
@@ -39,8 +39,8 @@ actOnVac (L n k) = Vak $ sparseNub [(o,y*x/2) |
 	nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k, (o,y) <-unVak$nakaState $op nu a b ] where
 	op nu a b = if nu < n-nu then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
 actOnVac Del = Vak  []
-actOnVac (S _ _) = Vak  []
-actOnVac (SV _ _) = Vak  []
+actOnVac (Ch _ _) = Vak  []
+actOnVac (GV _ _) = Vak  []
 actOnVac (ChT _) = Vak []
 
 -- ad(Del)^n(op)/n!
@@ -58,16 +58,26 @@ commutator Del (P n a) = ([L n a], fromIntegral n) :
 	[ ([P n c],x*y*sc) | (b,x) <- gfa_K, (c,y) <- gfa_mult b a] where
 	sc = fromIntegral $ (-n*(abs n - 1) ) `div` 2
 commutator (L n a) (P m b) = [ ([P (n+m) c], x*fromIntegral(-m)) | (c,x) <- gfa_mult a b ]
-commutator (S _ _) Del = []
-commutator (S n a) (P (-1) y) = [ (c,x*fromRational z) | (b,x) <- gfa_mult a y, (c,z) <- facDiff n (P (-1) b) ]
-commutator (SV _ _) Del = []
-commutator (SV n a) (P (-1) y) = if odd n then [(s,negate x) | (s,x) <-csn] else csn where
-	csn = commutator (S n a) (P (-1) y) 
+commutator (Ch _ _) Del = []
+commutator (Ch n a) (P (-1) y) = [ (c,x*fromRational z) | (b,x) <- gfa_mult a y, (c,z) <- facDiff n (P (-1) b) ]
+commutator (GV _ _) Del = []
+commutator (GV n a) (P (-1) y) = if odd n then [(s,negate x) | (s,x) <-csn] else csn where
+	csn = commutator (Ch n a) (P (-1) y) 
 commutator (ChT _) Del = []
---commutator (ChT n) p@(P (-1) y) =  sparseNub $ first ++ second ++ fourth where
---	first = if odd n then [] else [ (c,2*x) | (c,x) <-facDiff n p ]
---	second = [ (c++[SV k b],-x*z) | ((a,b),x) <- gfa_comult y, k<- [0..n-2], (c,z) <-facDiff (n-k-2) (P (-1) a) ]
---	fourth = [ (c++[S k b],-x*z*fromIntegral ((-1)^(n-k))) | ((a,b),x) <- gfa_comult y, k<- [0..n-2], (c,z) <-facDiff (n-k-2) (P (-1) a) ]
+commutator (ChT n) p@(P (-1) y) =  sparseNub $ first ++ second ++ third ++ fourth ++ fifth where
+	k2 = [(c,x*xx*z) | (a,x) <-gfa_K, (b,xx) <-gfa_K, (c,z) <- gfa_mult a b]
+	todd_Inv = [gfa_1, scal (1/2) gfa_K, sparseNub $ scal (1/6) k2 ++ scal (-1/12) gfa_euler]
+	exp_K_y = [[(y,1)], [ (b,-x*xx) | (a,x) <- gfa_K, (b,xx) <- gfa_mult a y] ,
+		[ (b,x*xx/2)| (a,x) <-k2, (b,xx) <- gfa_mult a y ] ]
+	expTodd = zipWith scal [1,-1,1] todd_Inv
+	first = [ (c,x) | (c,x) <-facDiff n p ]
+	second = [ ( o++[GV gn b2], -x*xx*xxx*z) | k <- [0..2] , (a,x) <- todd_Inv!!k, ((b1,b2),xx) <- gfa_comult a, 
+		(c,xxx) <- gfa_mult b1 y, nu <- [0..n-k-2], let gn = n-nu-k-2, (o,z) <- facDiff nu (P (-1) c) ]
+	third = [ (c,x*xx*(-1)^nu) | nu<-[max (n-2) 0..n], 
+		(a,x) <- exp_K_y !! (n-nu), (c,xx) <-facDiff nu (P (-1) a) ]
+	fourth = [ ( o++[Ch gn b2], -x*xx*xxx*z*(-1)^nu) | k <- [0..2] , (a,x) <- expTodd!!k, ((b1,b2),xx) <- gfa_comult a, 
+		(c,xxx) <- gfa_mult b1 y, nu <- [0..n-k-2], let gn = n-nu-k-2, (o,z) <- facDiff nu (P (-1) c) ]
+	fifth = if n==2 then [ ([P(-1) b], -x*xx) | (a,x) <- gfa_euler, (b,xx) <- gfa_mult a y] else []
 
 
 showOperatorList [] = "|0>"
@@ -76,7 +86,7 @@ showOperatorList (P n k:r) = sh ++ showOperatorList r where
 	sh = (if n<0 then "p_"++show(-n)else "p"++show n)++"("++show k++") "
 showOperatorList (L n k:r) = sh ++ showOperatorList r where
 	sh = (if n<0 then "L_"++show(-n)else "L"++show n)++"("++show k++") "
-showOperatorList (S n k:r) = "ch"++show n++"["++show k++ "] " ++ showOperatorList r 
+showOperatorList (Ch n k:r) = "ch"++show n++"["++show k++ "] " ++ showOperatorList r 
 
 instance (Show a, Show k) => Show (State a k) where
 	show (Vak []) = "0"
