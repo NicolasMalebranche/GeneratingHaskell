@@ -81,7 +81,7 @@ instance GradedFrobeniusAlgebra K3Domain where
 	gfa_1 = [(0,1)]
 	gfa_K = []
 	
-	gfa_T (K3 23) = 1
+	gfa_T (K3 23) = -1
 	gfa_T _ = 0
 	
 	gfa_base = [0..23]
@@ -169,7 +169,7 @@ instance GradedFrobeniusAlgebra TorusDomain where
 	gfa_1 = [(0,1)]
 	gfa_K = []
 	
-	gfa_T (Tor 15) = 1
+	gfa_T (Tor 15) = -1
 	gfa_T _ = 0
 	
 	gfa_base = [0..15]
