@@ -37,7 +37,7 @@ actsOn (ChT _) = DelState
 actOnVac p@(P n k) = Vak $ if n<0 then [([p],1)] else []
 actOnVac (L n k) = Vak $ sparseNub [(o,y*x/2) | 
 	nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k, (o,y) <-unVak$nakaState $op nu a b ] where
-	op nu a b = if nu < n-nu then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
+	op nu a b = if n-nu > 0 then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
 actOnVac Del = Vak  []
 actOnVac (Ch _ _) = Vak  []
 actOnVac (GV _ _) = Vak  []
