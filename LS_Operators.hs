@@ -65,19 +65,20 @@ commutator (GV n a) (P (-1) y) = if odd n then [(s,negate x) | (s,x) <-csn] else
 	csn = commutator (Ch n a) (P (-1) y) 
 commutator (ChT _) Del = []
 commutator (ChT n) p@(P (-1) y) =  sparseNub $ first ++ second ++ third ++ fourth ++ fifth where
-	k2 = [(c,x*xx*z) | (a,x) <-gfa_K, (b,xx) <-gfa_K, (c,z) <- gfa_mult a b]
-	todd_Inv = [gfa_1, scal (1/2) gfa_K, sparseNub $ scal (1/6) k2 ++ scal (-1/12) gfa_euler]
+	k2= [(c,2*x*xx*z) | (a,x) <-gfa_K, (b,xx) <-gfa_K, (c,z) <- gfa_mult a b]
+	todd_Inv_y = [[(y,1)], [(b,x*xx/2) | (a,x)<-gfa_K, (b,xx) <- gfa_mult a y],  
+		sparseNub [(b,x*xx) | (a,x)<-scal (1/6) k2 ++ scal (1/12) gfa_euler, (b,xx) <- gfa_mult a y]]
 	exp_K_y = [[(y,1)], [ (b,-x*xx) | (a,x) <- gfa_K, (b,xx) <- gfa_mult a y] ,
 		[ (b,x*xx/2)| (a,x) <-k2, (b,xx) <- gfa_mult a y ] ]
-	expTodd = zipWith scal [1,-1,1] todd_Inv
+	expTodd_y = zipWith scal [1,-1,1] todd_Inv_y
 	first = [ (c,x) | (c,x) <-facDiff n p ]
-	second = [ ( o++[GV gn b2], -x*xx*xxx*z) | k <- [0..2] , (a,x) <- todd_Inv!!k, ((b1,b2),xx) <- gfa_comult a, 
-		(c,xxx) <- gfa_mult b1 y, nu <- [0..n-k-2], let gn = n-nu-k-2, (o,z) <- facDiff nu (P (-1) c) ]
+	second = [ ( o++[GV gn b2], x*xx*z) | k <- [0..2] , (a,x) <- todd_Inv_y!!k, ((b1,b2),xx) <- gfa_comult a, 
+		nu <- [0..n-k-2], let gn = n-nu-k-2, (o,z) <- facDiff nu (P (-1) b1) ]
 	third = [ (c,x*xx*(-1)^nu) | nu<-[max (n-2) 0..n], 
 		(a,x) <- exp_K_y !! (n-nu), (c,xx) <-facDiff nu (P (-1) a) ]
-	fourth = [ ( o++[Ch gn b2], -x*xx*xxx*z*(-1)^nu) | k <- [0..2] , (a,x) <- expTodd!!k, ((b1,b2),xx) <- gfa_comult a, 
-		(c,xxx) <- gfa_mult b1 y, nu <- [0..n-k-2], let gn = n-nu-k-2, (o,z) <- facDiff nu (P (-1) c) ]
-	fifth = if n==2 then [ ([P(-1) b], -x*xx) | (a,x) <- gfa_euler, (b,xx) <- gfa_mult a y] else []
+	fourth = [ ( o++[Ch gn b2], x*xx*z*(-1)^nu) | k <- [0..2] , (a,x) <- expTodd_y!!k, ((b1,b2),xx) <- gfa_comult a, 
+		nu <- [0..n-k-2], let gn = n-nu-k-2, (o,z) <- facDiff nu (P (-1) b1) ]
+	fifth = if n==2 then [ ([P(-1) b], x*xx) | (a,x) <- gfa_euler, (b,xx) <- gfa_mult a y] else []
 
 
 showOperatorList [] = "|0>"
