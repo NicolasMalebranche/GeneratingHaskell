@@ -143,8 +143,17 @@ toNaka (Vak l) = Vak $ sparseNub[ (p,x*y)|(o,x) <- l, (p,y) <- unVak$nakaState o
 scale a (Vak sta) = Vak $ scal a sta
 add (Vak s) (Vak t) = Vak $ sparseNub $ s ++ t
 
-multLists [] stat = stat
-multLists (l:r) stat = let 
-	Vak s = multLists r stat
-	ns = sparseNub[ (t,x*y*z) | (a,x) <- s, (o,y) <- l, (t,z)<- unVak $ nakaState (o++a) ]
-	in Vak ns
+multLists l stat = toNaka $ ml l stat where
+	ml [] stat = stat
+	ml (l:r) stat = let 
+		Vak s = ml r stat
+		ns = sparseNub[ (t,x*y*z) | (a,x) <- s, (o,y) <- l, (t,z)<- unVak $ delState (o++a) ]
+		in Vak ns
+
+-- Chern classes related to ChT
+cT = (!!) c where
+	c = [([],1::Rational)] : [if odd k then [] else cc k | k<-[1..] ]
+	cc k = [ (ChT (2*i):o, fact (2*i)/fromIntegral (k*(-1)^(i+1)) ) | i<-[1..div k 2], (o,x) <- cT (k-2*i) ]
+	fact n = fromIntegral $ product [1..n]
+
+

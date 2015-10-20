@@ -3,7 +3,7 @@ module LS_Tor3
 	where
 
 import LS_Frobenius
-import LS_Hilb
+import LS_Operators
 import Data.Ratio
 import Data.List
 
@@ -156,6 +156,7 @@ mayK = scale (-1) (bas 4!!6) `add`
 c2Tang = (scale (3%2) $ foldr add (Vak []) [ scale x $ nakaState (P (-1) 0: map (P (-1))r)  | (r,x) <- gfa_comultN 2 (Tor 0)]) `add` 
 	(scale (-1%3) $ nakaState [P (-3) 0] )
 -- = multLists [[([Ch 2 0],10),([Ch 1 0, Ch 1 0],-2) ]] one
+-- =  [([Ch 0 5, Ch 0 10],-4::Rational),([Ch 0 6, Ch 0 9],4),([Ch 0 (Tor 7), Ch 0 8],-4), ([Del,Del],1/3)]
 c4Tang = scale (4%3) $ foldr add (Vak []) [ scale x $ nakaState (map (P (-1))r)  | (r,x) <- gfa_comultN 3 (Tor 0)]
 
 
