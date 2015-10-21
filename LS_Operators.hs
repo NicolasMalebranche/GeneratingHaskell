@@ -25,23 +25,30 @@ degree (ChT n) = 2*n
 
 data ActsOn = DelState | Both | NakaState deriving (Show,Eq)
 
-actsOn (P (-1) _) = Both
-actsOn (P _ _) = NakaState
-actsOn (L _ _) = NakaState
+
+actsOn (P _ _) = Both
 actsOn Del = Both
+actsOn (L _ _) = NakaState
 actsOn (Ch _ _) = DelState
 actsOn (GV _ _) = DelState
 actsOn (ChT _) = DelState
 
 
-actOnVac p@(P n k) = Vak $ if n<0 then [([p],1)] else []
-actOnVac (L n k) = Vak $ sparseNub [(o,y*x/2) | 
+actOnNakaVac p@(P n _) = Vak $ if n<0 then [([p],1)] else []
+actOnNakaVac (L n k) = Vak $ sparseNub [(o,y*x/2) | 
 	nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k, (o,y) <-unVak$nakaState $op nu a b ] where
 	op nu a b = if n-nu > 0 then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
-actOnVac Del = Vak  []
-actOnVac (Ch _ _) = Vak  []
-actOnVac (GV _ _) = Vak  []
-actOnVac (ChT _) = Vak []
+actOnNakaVac Del = Vak []
+
+actOnDelVac p@(P n k) = Vak $ if n >= 0 then [] else scal ( 1/ fac) $ rec n where
+	fac = fromIntegral $ product [n+1 .. -1] 
+	rec (-1) = [([P(-1) k],1)]
+	rec n = sparseNub [ t | (o,x) <- rec (n+1), (oo,y) <- p', t<-[(oo++o,x*y),(o++oo,-x*y)]]   
+	p' = [ ([Del,P(-1) a], x) | (a,x) <-gfa_1 ] ++ [ ([P(-1) a,Del], -x) | (a,x) <-gfa_1 ] 
+actOnDelVac Del = Vak  []
+actOnDelVac (Ch _ _) = Vak  []
+actOnDelVac (GV _ _) = Vak  []
+actOnDelVac (ChT _) = Vak []
 
 -- ad(Del)^n(op)/n!
 facDiff n op = let 
@@ -57,6 +64,7 @@ commutator (P n a) (P m b) = if n+m==0 then [ ([], gfa_bilinear a b*fromIntegral
 commutator Del (P n a) = ([L n a], fromIntegral n) : 
 	[ ([P n c],x*y*sc) | (b,x) <- gfa_K, (c,y) <- gfa_mult b a] where
 	sc = fromIntegral $ (-n*(abs n - 1) ) `div` 2
+commutator p@(P _ _) Del = scal (-1) $ commutator Del p
 commutator (L n a) (P m b) = [ ([P (n+m) c], x*fromIntegral(-m)) | (c,x) <- gfa_mult a b ]
 commutator (Ch _ _) Del = []
 commutator (Ch n a) (P (-1) y) = [ (c,x*fromRational z) | (b,x) <- gfa_mult a y, (c,z) <- facDiff n (P (-1) b) ]
@@ -102,7 +110,7 @@ delState :: (GradedFrobeniusAlgebra k, Ord k) => [VertexOperator k] -> State Rat
 delState [] = Vak [([],1)] 
 delState (o:r) = if actsOn o == NakaState then toDel $ nakaState (o:r) else result where
 	result = Vak $ sparseNub[ (q,x*y) | (s,x) <-unVak$ delState r, (q,y) <- unVak $ commuteIn s]
-	commuteIn [] = actOnVac o
+	commuteIn [] = actOnDelVac o
 	commuteIn (pd:r) = case (o,pd) of 
 		(Del,_) -> Vak [ (Del:pd:r,1) ]
 		(P (-1) _, Del) -> Vak [ (o:pd:r,1) ]
@@ -126,7 +134,7 @@ nakaState (o:r) = if actsOn o == DelState then toNaka $ delState (o:r) else resu
 		(True,EQ) -> (p:q:r,0)
 		(v, GT) -> (q:n, if v then -s else s) where (n,s) = nakaSort p r
 		_ -> (p:q:r,1) 		
-	commuteIn [] = actOnVac o
+	commuteIn [] = actOnNakaVac o
 	commuteIn (p:r) = case (o,p) of
 		(P _ _, P _ _) -> if o<=p then Vak [(o:p:r,1)] else Vak cI 
 		_ -> Vak cI
