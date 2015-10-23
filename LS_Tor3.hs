@@ -61,6 +61,8 @@ j a = [([Ch 0 a],1%1)]
 
 h a = [([Ch 1 a], 1%1)]
 
+k a = [([Ch 2 a], 1%1)]
+
 -- ist theta ^* d etwa durch 3 teilbar? -- nöö, q(delta ) = 6
 -- theta^* d^4
 th_del_4 = multLists [d,d,d,d] one `add`
@@ -134,6 +136,18 @@ writeV = writeFile ("Vector.txt") m where
 	m = "b:= \n" ++show x ++"\n;;\n"
 	x = [numerator $ i* bogoSym s | (s,i) <- sym4 ] ++ replicate 8034 0
 
+writeM4 = writeFile "Matrix4.txt" m where
+	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) scal4) ++"\n];;\n"
+	col s = [p| t <- bs, let p=pairing s t ]
+	bs = map (\x -> multLists [x] mayK) scal4
+	scal4 = zipWith scal s $ l 4
+	s = map cf $ l 4
+	cf x = let
+		facts = map snd $ unVak $  multLists [x] mayK
+		ns = if facts == [] then 1 else foldr gcd 0 $ map numerator facts
+		ds = foldr lcm 1 $ map denominator facts
+		in ds % ( (if ns `mod` 16 == 0 then 2 else 1) *(if ns `mod` 4 == 0 then 2 else 1) *(if ns `mod` 9 == 0 then 3 else 1) *(if ns `mod` 81 == 0 then 3 else 1))
+
 -- Kohomologieklasse der verallgemeinerten Kummerschen
 -- == multLists [j 1, j 2, j 3, j 4] one
 mayK = scale (-1) (bas 4!!6) `add` 
@@ -159,5 +173,11 @@ c2Tang = (scale (3%2) $ foldr add (Vak []) [ scale x $ nakaState (P (-1) 0: map 
 -- =  [([Ch 0 5, Ch 0 10],4::Rational),([Ch 0 6, Ch 0 9],-4),([Ch 0 (Tor 7), Ch 0 8],4), ([Del,Del],-1/3)]
 c4Tang = scale (4%3) $ foldr add (Vak []) [ scale x $ nakaState (map (P (-1))r)  | (r,x) <- gfa_comultN 3 (Tor 0)]
 
+
+-- Ungerade ganzzahlige Basen der Kummerschen (8 Stueck jeweils)
+bas3 = [ j $ Tor i | i <- [14,13..11]] ++ [ h i | i<-[1..4]]
+bas5 = [ [([Ch 2 $Tor i],2/3)] | i<-[1..4]] ++ [ h i | i<-[14,13..11]]
+writePairing = putStrLn $concat $  intersperse "\n" $  map f [0..7] where
+	f i = show $ map (flip pairing $ multLists [bas3!!i] mayK) bas5
 
 
