@@ -173,6 +173,9 @@ c2Tang = (scale (3%2) $ foldr add (Vak []) [ scale x $ nakaState (P (-1) 0: map 
 -- =  [([Ch 0 5, Ch 0 10],4::Rational),([Ch 0 6, Ch 0 9],-4),([Ch 0 (Tor 7), Ch 0 8],4), ([Del,Del],-1/3)]
 c4Tang = scale (4%3) $ foldr add (Vak []) [ scale x $ nakaState (map (P (-1))r)  | (r,x) <- gfa_comultN 3 (Tor 0)]
 
+-- Hassett und Tschinkel Objekte
+w = [ ([ChT 2],-3/8), ([Ch 1 (Tor 0),Ch 1 0],9%8)]
+yp = [([ChT 2],-1%24), ([Ch 1 (Tor 0),Ch 1 0],1%72) ]
 
 -- Ungerade ganzzahlige Basen der Kummerschen (8 Stueck jeweils)
 bas3 = [ j $ Tor i | i <- [14,13..11]] ++ [ h i | i<-[1..4]]
