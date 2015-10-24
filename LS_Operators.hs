@@ -160,8 +160,8 @@ multLists l stat = toNaka $ ml l stat where
 
 -- Chern classes related to ChT
 cT = (!!) c where
-	c = [([],1::Rational)] : [if odd k then [] else cc k | k<-[1..] ]
-	cc k = [ (ChT (2*i):o, fact (2*i)/fromIntegral (k*(-1)^(i+1)) ) | i<-[1..div k 2], (o,x) <- cT (k-2*i) ]
+	c = [([],1::Rational)] : [if odd k then [] else cc k | k<-[1..] ]
+	cc k = [ (ChT (2*i):o, x*fact(2*i)/fromIntegral(-k) ) | i<-[1..div k 2], (o,x) <- cT (k-2*i) ]
 	fact n = fromIntegral $ product [1..n]
 
 
