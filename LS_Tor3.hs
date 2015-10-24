@@ -137,17 +137,22 @@ writeV = writeFile ("Vector.txt") m where
 	x = [numerator $ i* bogoSym s | (s,i) <- sym4 ] ++ replicate 8034 0
 
 writeM4 = writeFile "Matrix4.txt" m where
-	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) scal4) ++"\n];;\n"
-	col s = [p| t <- bs, let p=pairing s t ]
-	bs = map (\x -> multLists [x] mayK) scal4
-	scal4 = zipWith scal s $ l 4
-	s = map cf $ l 4
-	cf x = let
-		facts = map snd $ unVak $  multLists [x] mayK
-		ns = if facts == [] then 1 else foldr gcd 0 $ map numerator facts
-		ds = foldr lcm 1 $ map denominator facts
-		in ds % ( (if ns `mod` 16 == 0 then 2 else 1) *(if ns `mod` 4 == 0 then 2 else 1) *(if ns `mod` 9 == 0 then 3 else 1) *(if ns `mod` 81 == 0 then 3 else 1))
-
+	m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) kum4) ++"\n];;\n"
+	col s = [if denominator p== 1 then numerator p else error"notInt"| t <- bs, let p=pairing s t ]
+	bs = map (\x -> multLists [x] mayK) kum4
+	
+-- Basis auf der Kummerschen ?
+kum4 = [ [([Ch 0 a,Ch 1 0],1/3)] | a<-[5..10]] ++
+	[ [([Ch 0 a,Ch 0 a],1/2),([Ch 1 a],1)] | a<-[5..10]] ++
+	[  j 15 ,  [([Ch 1 0,Ch 1 0],1/9)] , [([Ch 2 0],2/3)] ] ++
+	[ [([Ch 0 a,Ch 0 b],1)]| a<-[5..10], b<-[a+1..10] ] ++
+	[ [([Ch 0 5,Ch 0 10],1/6),([Ch 0 6,Ch 0 9],-1/6),([Ch 0 7,Ch 0 8],1/6)]  ]
+{-[[([Ch 2 0],1/3)] ] ++
+	[ [([Ch 0 a,Ch 0 b],1)] | a<-[5..10],b<-[a..10]] ++
+	[ [([Ch 1 a],1)] | a<-[5..10]] ++ [ [([Ch 0 a,Ch 1 0],1)] | a<-[5..10]] ++
+	[ [([Ch 1 a,Ch 0 b],1)] | a<-[1..4], b<-[1..4]] ++ 
+	[  j 15 ,  [([Ch 1 0,Ch 1 0],1/3)] ]  
+-}
 -- Kohomologieklasse der verallgemeinerten Kummerschen
 -- == multLists [j 1, j 2, j 3, j 4] one
 mayK = scale (-1) (bas 4!!6) `add` 
