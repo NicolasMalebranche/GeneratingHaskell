@@ -136,7 +136,7 @@ nakaState (o:r) = if actsOn o == DelState then toNaka $ delState (o:r) else resu
 		_ -> (p:q:r,1) 		
 	commuteIn [] = actOnNakaVac o
 	commuteIn (p:r) = case (o,p) of
-		(P _ _, P _ _) -> if o<=p then Vak [(o:p:r,1)] else Vak cI 
+		(P _ _, P _ _) -> if o<p then Vak [(o:p:r,1)] else Vak cI 
 		_ -> Vak cI
 		where
 		cI = case comm of [] -> ted; _ -> sparseNub $ ted ++ comm
