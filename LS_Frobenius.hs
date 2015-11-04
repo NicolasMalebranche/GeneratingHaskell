@@ -35,8 +35,20 @@ instance (GradedFrobeniusAlgebra k, GradedFrobeniusAlgebra k') => GradedFrobeniu
 		(k,x) <- gfa_bilinearInverse i, (l,y) <-gfa_bilinearInverse j] where
 			ep k = if odd (gfa_deg k * gfa_deg j) then (-1) else 1
 
-
-
+-- base for Symmetric tensors
+gfa_symBase n = cs n gfa_base where
+	f [] = []
+	f l@(a:b) = (a, if odd (gfa_deg a) then b else l ) : f b
+	cs 0 _ = [[]]
+	cs k b@(a:r) = [ x:t | (x,r) <- f b, t <- cs (k-1) r] 
+-- power is n, degree is k
+gfa_symBaseOfDeg n k = csd n k gfa_base where
+	f [] = []
+	f l@(a:b) = (a, d, if odd d then b else l) : f b where d = gfa_deg a
+	csd 0 0 _ = [[]]
+	csd n k b@(a:r) = if n<= 0 then [] else
+		[ x:t | (x,d,r) <- f b, t <- csd (n-1) (k-d) r] 
+	
 	
 gfa_multList [] = gfa_1
 gfa_multList [i] = [(i,1)]
