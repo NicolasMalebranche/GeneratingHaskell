@@ -73,7 +73,7 @@ l 9 = [ [([Ch 0 a, Ch 0 15, Ch 0 15],1 )]| a<-[1..4]] ++
 	[ [([Ch 0 a, Ch 1 15],1 )]| a<-[11..14]] ++
 	[ [([Ch 0 15, Ch 1 a],1 )]| a<-[11..14]] 
 
-l 10 = [([Ch 3 15],1%1)]  : [ [([Ch 0 a,Ch 0 b,Ch 0 15],1%1)] | a<-[14,13,12,11],b<-[a-1,a-2..11]] ++ 
+l 10 = [([Ch 3 15],6%1)]  : [ [([Ch 0 a,Ch 0 b,Ch 0 15],1%1)] | a<-[14,13,12,11],b<-[a-1,a-2..11]] ++ 
 	[ [([Ch 0 a,Ch 0 15,Ch 0 15],1%1)] | a<-[10,9..5]] 
 l 11 = 	[ [([Ch 0 15,Ch 0 15,Ch 0 a],1)]| a<-[14,13,12,11]]	
 l 12 = 	[ [([Ch 0 15,Ch 0 15,Ch 0 15],1)]]
@@ -176,12 +176,16 @@ writeM4 = writeFile "Matrix4.txt" m where
 	col s = [if denominator p== 1 then numerator p else error"notInt"| t <- bs, let p=pairing s t ]
 	bs = map (\x -> multLists [x] mayK) kum4
 	
--- Basis auf der Kummerschen ?
+-- Basis auf der Kummerschen ? Diskriminante der Selbstschitt-Matrix auf dem Bild in der Kummerschen ist 3^20
 kum4 = [ [([Ch 0 a,Ch 1 0],1/3)] | a<-[5..10]] ++
 	[ [([Ch 0 a,Ch 0 a],1/2),([Ch 1 a],1)] | a<-[5..10]] ++
 	[  j 15 ,  [([Ch 1 0,Ch 1 0],1/9)] , [([Ch 2 0],2/3)] ] ++
 	[ [([Ch 0 a,Ch 0 b],1)]| a<-[5..10], b<-[a+1..10] ] ++
 	[ [([Ch 0 5,Ch 0 10],1/6),([Ch 0 6,Ch 0 9],-1/6),([Ch 0 7,Ch 0 8],1/6)]  ]
+
+-- Indizes in obiger Basis, welche jeden Schnitt durch 3 teilbar haben 
+-- entspricht  [([Ch 0 a,Ch 0 b],1)] mit a,b<[5..10], ab == 0
+div3Ind = [15,16,17,18,20,21,23,25,26,27,28,29::Int]
 {-[[([Ch 2 0],1/3)] ] ++
 	[ [([Ch 0 a,Ch 0 b],1)] | a<-[5..10],b<-[a..10]] ++
 	[ [([Ch 1 a],1)] | a<-[5..10]] ++ [ [([Ch 0 a,Ch 1 0],1)] | a<-[5..10]] ++
