@@ -99,6 +99,9 @@ multAn a = multb where
 		bs = zip (sortBy ((.length).flip compare.length) $cycles $ partPermute pb) lb
 		elems = [(toAn cs,v) | as <- asl, (cs,v) <- multSn as bs]
 
+multAnLists [l] = l
+multAnLists (l:r) = sparseNub [(c,x*y*z) | (a,x) <- multAnLists r, (b,y) <- l, (c,z) <- multAn a b] 
+
 -- integer base to ordinary base, see Q-W, Thm 1.1
 intCrea :: AnBase -> [(AnBase,Ratio Int)]
 intCrea = map makeAn. tensor. construct where
