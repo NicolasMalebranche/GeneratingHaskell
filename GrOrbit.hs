@@ -67,6 +67,10 @@ suborbit x = run (singleton x) where
 	run s = if s==ns then s else run ns where
 		ns = unions [act g s | g <- [I, G, S]]
 
+suborbit2 x = run (singleton x) where
+	run s = if s==ns then s else run ns where
+		ns = unions [act g s | g <- [I, T, S]]
+
 test1 = (unions.Prelude.map singleton) [ (1,0,0,0), (1,1,0,0), (0,1,0,0) ]
 test2 = (unions.Prelude.map singleton) [ (1,0,1,0), (1,0,0,1), (0,0,1,1)::A2 ]
 
@@ -91,8 +95,9 @@ checkposs p = let
 	check3 = even$ sum $ zipWith(*) gst gst
 	check4 = odd $sum $ zipWith (*) gst $zipWith (*) st $zipWith (*) f nq
 	check5 = even $sum $ zipWith (*) ggst $ zipWith (*) f gst  
-	check6 = even $sum $ zipWith (*) ggst $ zipWith (*) nq gst  
-	in check2 && checks && checkn && check3 && check4 && check5 && check6
+	check6 = even $sum $ zipWith (*) ggst $ zipWith (*) nq gst 
+	check7 = even$ sum $ zipWith(*) st $ zipWith (*) nq ggst 
+	in check2 && checks && checkn && check3 && check4 && check5 && check6 && check7
 
 
 	 
@@ -104,6 +109,8 @@ fillpossil [a,b,c,d,e,f,g] = [ l i | i<-[1..36]] where
 
 
 alphaIdentities = Prelude.map fromList [[1,26,31,33],[2,4,6,21,24,25],[3,5,7,9,11,13,15,17,19,27,29,34],[8,10,12,22,28,30],[14,16,18,23,32,35],[20]]
+
+betaIdentities = Prelude.map fromList
 
 data Mat a = M a a a a
 mats = [M i n n i, 
