@@ -23,10 +23,14 @@ lehmerCode (a:r) = length [ () | b <- r, a > b] : lehmerCode r
 lehmerRemove :: Int -> LehmerCode -> LehmerCode
 lehmerRemove i r = reverse $ rLehmerRemove (length r - i-1) $ reverse r
 
-
 lehmerList :: Int -> [LehmerCode]
-lehmerList i = if i<=1 then [[]] else [ j:r | j<-[0..i-1], r <- ll] where
+lehmerList i = if i<1 then [[]] else [ j:r | j<-[0..i-1], r <- ll] where
 	ll = lehmerList (i-1)
+
+lehmerFromNumber :: Integral i => i -> LehmerCode
+lehmerFromNumber n = lfn [] 1 n where
+	lfn lc k n = if n == 0 then lc else lfn (fromIntegral m:lc) (k+1) d where
+		(d,m) = divMod n k
 
 
 -- Funktioniert auch mit unendlichen Listen
