@@ -13,7 +13,7 @@ laurentWritePrec = unsafePerformIO . writeIORef laurentPrecRef
 
 -- Laurentreihen mit endlichem Hauptteil
 -- Der ganzzahlige Parameter ist üblicherweise negativ
--- Die Reihe will gelesen werden als Lau r f = x^r f
+-- Die Reihe will gelesen werden als Lau r f = z^r f
 data LaurentSeries a = Lau Integer (PowerSeries a)
 	deriving (Functor)
 
@@ -43,7 +43,7 @@ laurentOrder (Lau r p) = lo r p where
 -- Entscheidet, ob eine Reihe 0 ist durch Auswerten der ersten laurentPrec Glieder
 laurentInv l = case laurentOrder l of
 	(Just (Lau r p)) -> Lau (-r) $ seriesInv p
-	Nothing -> error $ "Laurent series division by zero (up to precision: x^" ++
+	Nothing -> error $ "Laurent series division by zero (up to precision: z^" ++
 		show (laurentReadPrec ()) ++ ")"
 
 -- Differential
@@ -51,13 +51,13 @@ laurentDiff (Lau r p) = let
 	d i (Elem a ar) = Elem (i*a) $ d (i+1) ar
 	in laurentClean $ Lau (r-1) $ d r p
 
--- Multipliziert mit x^n
+-- Multipliziert mit z^n
 laurentShift n (Lau r p) = Lau (r+n) p 
 
 -- Schneidet oben ab. Reihe wird Laurentpolynom vom Grad n-1
 laurentCutDegree n (Lau r p) = Lau r $ seriesCutDegree (n-r) p
 
--- Schneidet unten ab. Reihe geht mit x^n los.
+-- Schneidet unten ab. Reihe geht mit z^n los.
 laurentCutOrder n (Lau r p) = Lau neworder $ cut (neworder-r) p where
 	neworder = max n r
 	cut 0 p = p
