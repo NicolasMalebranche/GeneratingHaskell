@@ -126,6 +126,11 @@ seriesCatalan = Elem 1 $ seriesCatalan^2
 seriesGeo :: Num a => PowerSeries a
 seriesGeo = Elem 1 $ seriesGeo
 
+-- sum [ (-1)^n * t^((3*n^2-n)/2) , n ganzzahlig]
+-- seriesInv seriesEuler ist die Partitionsfunktion
+seriesEuler :: Num a => PowerSeries a
+seriesEuler = seriesShiftedProduct $ repeat (-1)
+
 -- Rationale bekannte Reihen
 seriesExp ::  Fractional a => PowerSeries a
 seriesCos ::  Fractional a => PowerSeries a

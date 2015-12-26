@@ -48,7 +48,7 @@ laurentInv l = case laurentOrder l of
 
 -- Differential
 laurentDiff (Lau r p) = let
-	d i (Elem a ar) = Elem (i*a) $ d (i+1) ar
+	d i (Elem a ar) = Elem (fromInteger i*a) $ d (i+1) ar
 	in laurentClean $ Lau (r-1) $ d r p
 
 -- Multipliziert mit z^n
@@ -105,6 +105,18 @@ instance (Eq a, Num a) => Eq (LaurentSeries a) where
 	a == b = case laurentOrder (a-b) of
 		Nothing -> True
 		Just _ -> False
+
+-- Beispiele
+
+-- Laurentreihe der Weierstraßschen p-Funktion
+laurentWeier g_2 g_3 = Lau (-2) $ Elem 1 $ Elem 0 $ Elem 0 $ Elem 0 r where
+	r = seriesZip (/) riv20 iseries
+	r2 = r^2
+	r' = seriesDiff r
+	iseries = seriesGenerating [20+4*fromIntegral i | i<- [0..]]
+	riv20 = Elem g_2 $ Elem 0 $ Elem g_3 $ Elem 0 $ s
+	s = fmap (g_2*) r - fmap (8*) r2 + Elem 0 (fmap (4*) r*r') +
+		seriesShift 2 (r'^2) - seriesShift 4 (fmap (4*) r*r2)
 
 instance (Show a) => Show (LaurentSeries a) where
 	show (Lau hr r) = let
