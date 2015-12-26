@@ -34,6 +34,10 @@ eulerphi = dirchDivConst id $ const 1
 -- Moebius-Funktion
 moebius = dirchInverseConst $ const 1
 
+-- Dirichlet-Konvolution mit der Möbius-Funktion
+moebiusInversion f n = sum [m k $ f d | (d,k) <- factorizations n] where
+	m k = case moebius k of { 0 -> const 0; 1 -> id; -1 -> negate}
+
 -- Differential einer Dirichlet Reihe
 dirchDiff (Dirch f) = Dirch $ \ n -> f n * log (fromIntegral n)
 
