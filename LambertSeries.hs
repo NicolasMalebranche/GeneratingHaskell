@@ -38,7 +38,7 @@ instance (Show a) => Show (LambertSeries a) where
 	show (Lambert r) = let
 		maxdeg = 20
 		xpower i = if i == 0 then "" else if i== 1 then "t" else "%^" ++ show i
-		showelem i a = if elem sa ["0","0.0","-0.0"] then "" else showsig ++ xpower i where
+		showelem i a = if elem sa ["0","0.0","-0.0","0 % 1"]] then "" else showsig ++ xpower i where
 			sa = show a
 			ska = if elem ' ' sa || elem '+' sa then "("++sa++")" else sa 
 			showsig = if head ska == '-' then " - "++shown (tail ska) else " + "++shown ska
