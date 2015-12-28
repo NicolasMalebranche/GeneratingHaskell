@@ -43,11 +43,19 @@ fnToPAdic (FN x) = fp $ 0 : zipWith ((*).toInteger) x facs' where
 		(i,f)<-zip [2..] facs', let (d,m) = i `divMod` p()]
 
 -- Interpretiert eine faktorielle Zahl als Lehmer-Code (rückwärts gelesen)
+-- Terminiert, wenn eines von x und a endlich ist
+-- x_i = # { j<i | a_j > a_i } 
 fnPermute (FN x) a = f [] 0 (0:x) a where
 	f l n [] a = l ++ a
 	f l n x [] = l
 	f l n (i:r) (a:b) = f (t ++ a:d) (n+1) r b where
 		(t,d) = splitAt (n-i) $ l
+
+-- Das ganze rückwärts. Konvergiert immer.
+-- fnPermute (fnFromOrder x) x == sort x
+fnFromOrder x = FN $ drop 1 $ fO [] x where
+	fO _ [] = []
+	fO acc (a:r) = length [() | c<-acc, c>a] : fO (a:acc) r
 
 -- Kann Gleichheit nur für endliche Zahlen entscheiden
 instance Eq FactorialNumber where
