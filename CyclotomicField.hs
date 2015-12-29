@@ -1,5 +1,5 @@
 
-module CyclotomicPolynomials where
+module CyclotomicField where
 
 import Polynomial
 import PowerSeries
