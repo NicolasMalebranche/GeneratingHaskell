@@ -135,6 +135,7 @@ seriesEuler = seriesShiftedProduct $ repeat (-1)
 seriesExp ::  Fractional a => PowerSeries a
 seriesCos ::  Fractional a => PowerSeries a
 seriesSin ::  Fractional a => PowerSeries a
+seriesTan ::  Fractional a => PowerSeries a
 seriesAsin ::  Fractional a => PowerSeries a
 seriesAtan ::  Fractional a => PowerSeries a
 seriesLog :: Fractional a => PowerSeries a
@@ -147,6 +148,8 @@ seriesCos = fmap fromRational $ make 1 1 where
 	
 seriesSin = fmap fromRational $ Elem 0 $ make 2 1 where
 	make i k = Elem k $ Elem 0 $ make (i+2) (negate k/(i*i + i))
+
+seriesTan = seriesSin / seriesCos
 
 seriesAsin = fmap fromRational $ arcsinMake 1 1 where
 	arcsinMake i k = Elem 0 $ Elem (k/i) $ arcsinMake (i+2) (k*i/(i+1))
@@ -161,6 +164,9 @@ seriesSqrt (Elem c s) = let
 	r = fmap (/2) $ s - Elem 0 (r^2)
 	rt = Elem 1 r
 	in if c == 1 then rt else error "Constant Coefficient not 1"
+
+bernoulliNumbers :: [Rational]
+bernoulliNumbers = expSequence $ seriesInvShift $ seriesShift (-2) seriesExp
 
 instance Floating a => Floating (PowerSeries a) where
 	pi = Elem pi 0

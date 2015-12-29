@@ -118,6 +118,11 @@ laurentWeier g_2 g_3 = Lau (-2) $ Elem 1 $ Elem 0 $ Elem 0 $ Elem 0 r where
 	s = fmap (g_2*) r - fmap (8*) r2 + Elem 0 (fmap (4*) r*r') +
 		seriesShift 2 (r'^2) - seriesShift 4 (fmap (4*) r*r2)
 
+-- Laurentreihe des Kotangens
+laurentCot :: Fractional a => LaurentSeries a
+laurentCot = Lau (-1) $ seriesCos * seriesInvShift sc where
+	Elem _ (Elem _ sc) = seriesSin
+
 instance (Show a) => Show (LaurentSeries a) where
 	show (Lau hr r) = let
 		maxdeg = 20
