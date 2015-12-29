@@ -29,7 +29,7 @@ dirchDivConst g f = mi where
 	i n = g n - sum [f d * mi k | (d,k) <- tail $ factorizations n]
 
 -- Eulersche phi-Funktion
-eulerphi = dirchDivConst id $ const 1
+eulerPhi = dirchDivConst id $ const 1
 
 -- Moebius-Funktion
 moebius = dirchInverseConst $ const 1
@@ -66,7 +66,7 @@ instance (Show a) => Show (DirichletSeries a) where
 	show r = let
 		maxdeg = 20
 		xpower i = if i== 1 then "" else "/"++ show i++ "^s"
-		showelem i a = if elem sa ["0","0.0","-0.0","0 % 1"]] then "" else showsig ++ xpower i where
+		showelem i a = if elem sa ["0","0.0","-0.0","0 % 1"] then "" else showsig ++ xpower i where
 			sa = show a
 			ska = if elem ' ' sa || elem '+' sa then "("++sa++")" else sa 
 			showsig = if head ska == '-' then " - "++shown (tail ska) else " + "++shown ska
