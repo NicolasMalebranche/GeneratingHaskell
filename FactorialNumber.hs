@@ -4,6 +4,12 @@ module FactorialNumber where
 import Data.List
 import PAdic
 
+-- Kempner-Funktion: kleinstes n>0, so daß n! `mod` k == 0
+fnKempner k = if k==0 then 0 else fnK (abs k) 1  where
+	fnK k n = if g == k then n else
+		if g == 1 then fnK k (n+1) else fnK (div k g) (n+1) where 
+		g = gcd n k
+
 -- FN x == sum [ (i+1)! * x[i] | i<-[0..]]
 -- Funktioniert auch mit unendlich langen Listen
 newtype FactorialNumber = FN [Int] 
