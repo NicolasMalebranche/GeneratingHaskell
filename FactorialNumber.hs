@@ -101,7 +101,7 @@ instance Num FactorialNumber where
 
 instance Show FactorialNumber where
 	show (FN []) = "0"
-	show (FN r) = ps 0 r "" where
+	show (FN r) = init (ps 0 r "") ++ ".!" where
 		maxDigits = 19
 		sh i r = ((['0'..'9'] ++ ['a'..'z']) !! i) : r
 		ps i [] a = a
