@@ -15,13 +15,13 @@ fnKempner k = if k==0 then 0 else fnK (abs k) 1  where
 newtype FactorialNumber = FN [Int] 
 
 -- Korrigiert Digits, die nicht im vorgesehenen Bereich liegen
-fnClean (FN x) = FN $ fc 2 0 x where
+fnClean (FN x) = FN $ fc 1 0 x where
 	fc i u (a:b) = m : fc (i+1) d b where (d,m) = divMod (a+u) i
 	fc i 0 [] = []
 	fc i u [] = fc i u [0]
 
 -- Dasselbe mit Integer-wertigen Listen
-fnClean' x = FN $ fc 2 0 x where 
+fnClean' x = FN $ fc 1 0 x where 
 	fc i u (a:b) = fromInteger m : fc (i+1) d b 
 		where (d,m) = divMod (a+u) i
 	fc i 0 [] = []
@@ -34,24 +34,24 @@ fnZip f (FN (a:r)) (FN (b:q)) = FN $ f a b : z
 	where FN z = fnZip f (FN r) (FN q)
 
 -- Wertet die Teilsummen aus. Konvergiert gegen die Zahl.
-fnToSequence (FN x) = ts 0 1 2 x  where
+fnToSequence (FN x) = ts 0 1 1 x  where
 	ts acc _ _ [] = repeat acc
 	ts acc fac i (a:r) = nacc : ts nacc (fac*i) (i+1) r
 		where nacc = acc + toInteger a*fac
 
 -- Konvertiert in eine p-adische Zahl
-fnToPAdic (FN x) = fp $ 0 : zipWith ((*).toInteger) x facs' where
+fnToPAdic (FN x) = fp $ zipWith ((*).toInteger) x facs' where
 	fp [] = 0
 	fp y = Z_p a $ r + fp d where
 		(t,d) = splitAt (p()) y
 		Z_p a r = fromInteger $ sum t
 	facs' = 1 : [ f*(if m==0 then d else i)| 
-		(i,f)<-zip [2..] facs', let (d,m) = i `divMod` p()]
+		(i,f)<-zip [1..] facs', let (d,m) = i `divMod` p()]
 
 -- Interpretiert eine faktorielle Zahl als Lehmer-Code (rückwärts gelesen)
 -- Terminiert, wenn eines von x und a endlich ist
 -- x_i = # { j<i | a_j > a_i } 
-fnPermute (FN x) a = f [] 0 (0:x) a where
+fnPermute (FN x) a = f [] 0 x a where
 	f l n [] a = l ++ a
 	f l n x [] = l
 	f l n (i:r) (a:b) = f (t ++ a:d) (n+1) r b where
@@ -59,7 +59,7 @@ fnPermute (FN x) a = f [] 0 (0:x) a where
 
 -- Das ganze rückwärts. Konvergiert immer.
 -- fnPermute (fnFromOrder x) x == sort x
-fnFromOrder x = FN $ drop 1 $ fO [] x where
+fnFromOrder x = FN $ fO [] x where
 	fO _ [] = []
 	fO acc (a:r) = length [() | c<-acc, c>a] : fO (a:acc) r
 
@@ -83,7 +83,7 @@ instance Num FactorialNumber where
 	a + b = fnClean $ fnZip (+) a b
 	a - b = fnClean $ fnZip (-) a b
 	negate (FN x) = fnClean $ FN $ map negate x
-	fromInteger n = FN $ fI 2 n where 
+	fromInteger n = FN $ fI 1 n where 
 		fI i 0 = []
 		fI i n = fromInteger m : fI (i+1) d where (d,m) = divMod n i
 	abs = id
