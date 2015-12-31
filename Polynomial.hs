@@ -78,6 +78,15 @@ polyReverse p = Polynomial {deg = deg p, ser = rev 0 0 $ ser p} where
 -- Multipliziert mit x^n. Falls n<0, killt die Terme mit negativen Exponenten.
 polyShift n p = Polynomial {deg = deg p + n, ser = seriesShift n $ ser p }
 
+-- Setzt x^n ein, wenn n>0.
+-- Wenn n<0, nimmt nur jeden (2-n)-ten Koeffizient
+polyStretch n p = if n>0 
+	then Polynomial {deg = deg p * n, ser = ss (ser p) }
+	else Polynomial {deg = deg p `div` (2-n), ser =  nn (ser p) }
+	where
+	ss (Elem a ar) = Elem a $ seriesShift (n-1) $ ss ar
+	nn (Elem a ar) = Elem a $ nn $ seriesShift (n-1) ar
+
 -- Teilen mit Rest. Koeffizientenbereich muß ein diskreter Körper sein.
 polyDivMod p q = if (qd < 1) then (fmap (/qv) p, 0) else dm p where
 	(qd, qv) = polyTop q
