@@ -87,6 +87,10 @@ invZ_p a = d 1 where
 -- Schneidet (max. 8) führende Nullen ab
 estimateOrderZ_p = e 0 where e i z@(Z_p a r) = if i>7 || a/=0 then (i,z) else e (i+1) r
 
+-- (a,b) = splitAtZ_p k p bedeutet p = a + p^k * b
+splitAtZ_p k q@(Z_p c x) = if k<1 then (0,q) 
+	else (a*p() + fromIntegral c , b) where
+	(a,b) = splitAtZ_p (k-1) x
 
 instance Num Z_p where
 	fromInteger i = Z_p m $ fromInteger d  where (d,m)= divMod_p i

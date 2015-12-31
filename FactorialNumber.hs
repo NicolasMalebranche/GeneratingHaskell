@@ -48,6 +48,15 @@ fnToPAdic (FN x) = fp $ zipWith ((*).toInteger) x facs' where
 	facs' = 1 : [ f*(if m==0 then d else i)| 
 		(i,f)<-zip [1..] facs', let (d,m) = i `divMod` p()]
 
+-- Eine mögliche Rückkonvertierung von einer p-adischen Zahl
+-- fnToPAdic . fnFromPAdic = id
+-- fnFromPAdic . fnToPAdic /= id
+fnFromPAdic x = FN $ f 1 x where
+	f n x = let
+		(k,n') = orderRem_p n
+		(a,b) = splitAtZ_p k x
+		in a : f (n+1) (b*invZ_p n')
+
 -- Interpretiert eine faktorielle Zahl als Lehmer-Code (rückwärts gelesen)
 -- Terminiert, wenn eines von x und a endlich ist
 -- x_i = # { j<i | a_j > a_i } 
