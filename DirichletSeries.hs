@@ -4,7 +4,8 @@ module DirichletSeries where
 import Data.List
 import Data.MemoTrie
 
-data DirichletSeries a = Dirch {dirchCoeff :: Int -> a} deriving Functor
+
+data DirichletSeries a = Dirch {dirchCoeff :: Integer -> a} deriving Functor
 
 factorizations =  f where
 	f n = half ++ root ++ map (\(a,b)->(b,a)) half where

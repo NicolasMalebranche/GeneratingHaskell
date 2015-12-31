@@ -73,8 +73,10 @@ seriesDiff (Elem s sr) = let
 seriesCompNegate (Elem s1 (Elem s2 s)) = Elem s1 $ Elem (negate s2) $ seriesCompNegate s
 
 -- Multipliziert mit t^n. Falls n<0, killt die Terme mit negativen Exponenten.
-seriesShift n s@(Elem _ ar) = if n < 0 then seriesShift (n+1) ar else
-	if n == 0 then s else Elem 0 $ seriesShift (n-1) s
+seriesShift n = case compare n 0 of
+	LT -> \ (Elem _ ar) -> seriesShift (n+1) ar
+	EQ -> id
+	GT -> Elem 0 . seriesShift (n-1)
 
 -- Setzt t^n ein, wenn n>0.
 -- Wenn n<0, nimmt nur jeden (2-n)-ten Koeffizient

@@ -3,18 +3,13 @@ module CyclotomicField where
 
 import Polynomial
 import PowerSeries
-import PrimeFactors
-import Data.MemoTrie
+import DirichletSeries
 
 -- Zyklotomische Polynome
-cyclotomic n = run 1 1 (seriesGenerating [1,-1]) pf where
-	pf = primeFactors n
-	run deg s c [] = polyFromSeries (s*deg) $ seriesStretch s c
-	run deg s c ((a,m):r) = run (deg*(a-1)) (s*a^(m-1)) newc r where
-		newc = seriesStretch a c * seriesInv c
-
-cyclotomicMemo :: Num a => Integer -> Polynomial a
-cyclotomicMemo = fmap fromInteger . memo cyclotomic
+cyclotomic n = Polynomial {deg = eulerPhi n, ser = s} where
+	s = foldr ($) 1 [ f m d | (d,c) <- factorizations n, let m = moebius c, m/=0]
+	f 1 d p = p - seriesShift d p
+	f (-1) d p = q where q = p + seriesShift d q
 
 data CyclotomicField a = Cyc Integer (Polynomial a) deriving Show
 
@@ -29,7 +24,7 @@ cycRebase (Cyc r p) = let
 	else Cyc r p
 
 cycReduce (Cyc r p@(Polynomial d s)) = let
-	eq = cyclotomicMemo r
+	eq = cyclotomic r
 	red d s = if d<deg eq then s else red (d-1) $ s - 
 		seriesShift (d-deg eq) (fmap (seriesCoeff s d*) $ ser eq)
 	in Cyc r $ polyClean $ Polynomial (deg eq) $ red d s
@@ -53,3 +48,4 @@ instance (Eq a, Num a) => Num (CyclotomicField a) where
 	fromInteger n = Cyc 1 $ fromInteger n
 	abs p = undefined 
 	signum = undefined
+
