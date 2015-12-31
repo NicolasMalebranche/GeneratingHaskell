@@ -63,6 +63,16 @@ fnFromOrder x = FN $ fO [] x where
 	fO _ [] = []
 	fO acc (a:r) = length [() | c<-acc, c>a] : fO (a:acc) r
 
+-- Division mit Rest durch eine natürliche Zahl
+fnDivMod fn@(FN x) k = (d , m) where 
+	kk _ = fromIntegral k
+	q = fnKempner $ kk(); qi = fromIntegral q
+	fstC = product [1..q] `div` (kk())
+	(d',m) = divMod (fnToSequence fn !! (qi-1)) $ kk()
+	mults n p = p : mults (n+1) (p*(q+n) `div` n)
+	r = zipWith ((*).fromIntegral) (drop qi x) $ mults 1 fstC
+	d = fromIntegral d' + fnClean' r
+
 -- Kann Gleichheit nur für endliche Zahlen entscheiden
 instance Eq FactorialNumber where
 	a==b = compare a b == EQ
