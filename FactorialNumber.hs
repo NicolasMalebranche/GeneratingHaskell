@@ -82,6 +82,15 @@ fnDivMod fn@(FN x) k = (d , m) where
 	r = zipWith ((*).fromIntegral) (drop qi x) $ mults 1 fstC
 	d = fromIntegral d' + fnClean' r
 
+-- Eine Zahl /=0 die durch alle Primzahlen teilbar ist
+fnExample = FN x where
+	x = 0:0:0:2:make 4 12 24
+	make n ac fa = if gcd fa n1 == 1
+		then m : make (n+1) ac' (fa*n1) 
+		else 0: make (n+1) ac (fa*n1)  where
+		n1 = toInteger $ n+1 
+		(m,ac') = head [ (i,c) | i<- [0..n], let c = ac + fromIntegral i *fa, c `mod` n1== 0]
+
 -- Kann Gleichheit nur für endliche Zahlen entscheiden
 instance Eq FactorialNumber where
 	a==b = compare a b == EQ
