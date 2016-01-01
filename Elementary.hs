@@ -22,3 +22,18 @@ binomial n k = if kk<0 then 0 else fromIntegral $ p 1 1 where
 -- Multinomialkoeffizienten
 multinomial [] = 1
 multinomial (m:r) = multinomial r * binomial (m+sum r) m 
+
+-- Erweiterter Euklidischer Algorithmus
+euclid 0 b = (b, (0, 1))
+euclid a b = (gcd, (y - x*d, x)) where
+	(d,m) = divMod b a
+	(gcd, (x, y)) = euclid m a
+
+-- Chinesischer Restsatz für [(Modulus, Rest)]
+-- Die Moduli müssen paarweise teilerfremd sein
+chinese l = snd $ foldr ch2 (1,0) l where
+	ch2 (n,a) (n',b) = let
+		(gcd, (x,y)) = euclid n n'
+		r = x*b*n + y*a*n'
+		kgv = n*n' `div` gcd
+		in (kgv, mod r kgv)
