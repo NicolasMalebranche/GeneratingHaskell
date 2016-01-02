@@ -1,14 +1,25 @@
 
 module FactorialNumber where
 
-import Data.List
 import PAdic
+import Elementary
 
 -- Kempner-Funktion: kleinstes n>0, so daß n! `mod` k == 0
 fnKempner k = if k==0 then 0 else fnK (abs k) 1  where
 	fnK k n = if g == k then n else
 		if g == 1 then fnK k (n+1) else fnK (div k g) (n+1) where 
-		g = gcd n k
+		g = gcd n k 
+
+-- [Primfaktorzerlegung von n! | n<-[0..]]
+fnFactorialDec = [] : [] : run 2 (repeat []) (repeat []) where
+	run p ([]:r) (a:ac) = ((toInteger p,1):a) : run (p+1) y z where
+		g n = if n==0 then id else (:) (toInteger p,n)
+		x = q $ map (1+) x
+		q x = replicate (p-1) 0 ++ s : q t where
+			s:t = x
+		y = zipWith g (drop p x) r
+		z = zipWith g (drop (p+1)$ scanl (+) 0 x) ac
+	run p (x:r) (a:ac) = a : run (p+1) r ac
 
 -- FN x == sum [ (i+1)! * x[i] | i<-[0..]]
 -- Funktioniert auch mit unendlich langen Listen
@@ -82,14 +93,15 @@ fnDivMod fn@(FN x) k = (d , m) where
 	r = zipWith ((*).fromIntegral) (drop qi x) $ mults 1 fstC
 	d = fromIntegral d' + fnClean' r
 
--- Eine Zahl /=0 die durch alle Primzahlen teilbar ist
-fnExample = FN x where
-	x = 0:0:0:2:make 4 12 24
-	make n ac fa = if gcd fa n1 == 1
-		then m : make (n+1) ac' (fa*n1) 
-		else 0: make (n+1) ac (fa*n1)  where
-		n1 = toInteger $ n+1 
-		(m,ac') = head [ (i,c) | i<- [0..n], let c = ac + fromIntegral i *fa, c `mod` n1== 0]
+-- Liefert diejenige Zahl x, so daß für alle p,n gilt:
+-- x mod p^n = f p n 
+-- fnChinese (const $ const x) = fromIntegral x
+fnChinese f = FN $ make 1 $ tail fnFactorialDec where
+	make fac (d:r) = fromIntegral q : make nfac r where
+		nfac = product $ map fst l
+		l = [ (p^m, f p m) | (p,m) <- d]
+		q = chinese l `div` fac
+
 
 -- Kann Gleichheit nur für endliche Zahlen entscheiden
 instance Eq FactorialNumber where
