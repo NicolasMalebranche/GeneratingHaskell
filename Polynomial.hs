@@ -101,6 +101,14 @@ polyDivMod p q = if (qd < 1) then (fmap (/qv) p, 0) else dm p where
 polyGCD p q = if deg m < 0 then q else polyGCD q m where
 	(d,m) = polyDivMod p q
 
+-- polyEuclid p q = (g,(x,y)) 
+-- ==> g= x*p + y*q
+polyEuclid p q = if deg p < 0 then (q, (0,1)) 
+	else (gcd, (y - x*d, x)) where
+	(d,m) = polyDivMod q p
+	(gcd, (x,y)) = polyEuclid m p
+
+
 -- Setzt das negative Argument ein
 polyCompNegate p = Polynomial { deg = deg p, ser = seriesCompNegate $ ser p}
 
