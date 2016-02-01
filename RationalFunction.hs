@@ -55,6 +55,9 @@ ratAntipode (Rat p q) = res where
 	(dp, dq) = (deg p, deg q)
 	(m, rp, rq) = (max dp dq, polyReverse p, polyReverse q)
 
+instance (Eq a, Num a) => Eq (RationalFunction a) where
+	Rat a b == Rat c d = a*d == b*c
+
 instance (Num a) => Num (RationalFunction a) where
 	Rat p q * Rat pp qq = Rat (p*pp) (q*qq)
 	Rat p q + Rat pp qq  = Rat (p*qq+pp*q) (q*qq)
