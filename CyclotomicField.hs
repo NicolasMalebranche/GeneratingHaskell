@@ -1,4 +1,3 @@
-{-# LANGUAGE ParallelListComp #-}
 module CyclotomicField where
 
 import Polynomial
@@ -36,6 +35,17 @@ cycClean cy = cycRebase $ cycReduce cy
 cycConjugate (Cyc r p) = con  where
 	con = Cyc r $ polyReverse $ Polynomial r (ser p)
 
+-- Realteil
+cycRealPart (Cyc r p) = sum $ zipWith (*) (map realToFrac $ polyToList p) 
+	[ cos(a*fromIntegral k) | k<-[0..]] where a = 2*pi/fromIntegral r
+
+-- Imaginärteil
+cycImaginaryPart (Cyc r p)  = sum $ zipWith (*) (map realToFrac $ polyToList p) 
+	[ sin(a*fromIntegral k) | k<-[0..]] where a = 2*pi/fromIntegral r
+
+-- komplexe Norm
+cycNorm a = sqrt $ cycRealPart $ a * cycConjugate a
+
 instance (Eq a, Num a) => Eq (CyclotomicField a) where
 	x==y = cycClean x == cycClean y
 
@@ -49,3 +59,9 @@ instance (Eq a, Num a) => Num (CyclotomicField a) where
 	abs p = undefined 
 	signum = undefined
 
+instance (Eq a, Fractional a) => Fractional (CyclotomicField a) where
+	fromRational q = Cyc 1 $ Polynomial 0 $ fromRational q
+	recip (Cyc r p) = let
+		(g,(x,_)) = polyEuclid p (cyclotomic r)
+		s = recip $ head $ polyToList g
+		in Cyc r $ fmap (*s) x
