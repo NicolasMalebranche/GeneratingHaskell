@@ -1,16 +1,20 @@
 {-# LANGUAGE MultiParamTypeClasses, DeriveFunctor, FlexibleInstances #-}
 import Prelude hiding (span,lines)
 import Data.List hiding (span,lines)
+import Data.Set
 import ShowMatrix
-p = 3
+import GroupAction
+
+-- p = 3
+p = 2
 mp = flip mod p
 
-weil (a1,a2,a3,a4) (b1,b2,b3,b4) = mp (a1*b2 - b1*a2 + a3*b4 - b3*a4) 
+weil (a1,a2,a3,a4) (b1,b2,b3,b4) = mp (a1*b4 - b1*a4 + a2*b3 - b2*a3) 
 
-bas = [ (a,b,c,d) | a <-[0..p-1], b<-[0..p-1], c<-[0..p-1], d<-[0..p-1] ]
+bas = [ (a,b,c,d)::Line | a <-[0..p-1], b<-[0..p-1], c<-[0..p-1], d<-[0..p-1] ]
 
 instance Num (Integer,Integer,Integer,Integer) where
-	(a1,a2,a3,a4)+(b1,b2,b3,b4) = (mp$a1+b2,mp$a2+b2,mp$a3+b3,mp$a4+b4)
+	(a1,a2,a3,a4)+(b1,b2,b3,b4) = (mp$a1+b1,mp$a2+b2,mp$a3+b3,mp$a4+b4)
 	negate (a1,a2,a3,a4) = (mp$ -a1,mp$ -a2,mp$ -a3,mp$ -a4)
 	fromInteger i = (i,i,i,i)
 
@@ -44,3 +48,13 @@ translates = nub [ sort [ v + w | v<- span x y ] | Plane (x,y) <- nodeg, w <- ba
 oo = [ [ if any (b==) c then 1 else 0 |b<-bas] |c <- translates]
 
 q = writeFile "Divisible3.txt" $ showGapMat2 oo
+
+-- Symplektische Gruppe
+-- http://www.maths.usyd.edu.au/u/don/papers/genAC.pdf
+data Sp4_2 = Sp4_2_A | Sp4_2_B deriving (Show, Eq, Enum) 
+instance GroupAction Sp4_2 Line where
+	gAct Sp4_2_A (a,b,c,d) = (mp$ a+c+d, mp$ a+d,mp$b+d,mp$a+b+c+d)
+	gAct Sp4_2_B (a,b,c,d) = (c,a,d,b)
+
+triples = nub [ fromList [x,y,-x-y] | x<-bas, y<-bas, x/=y, x/=0, y/=0]
+
