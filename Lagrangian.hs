@@ -1,12 +1,13 @@
-{-# LANGUAGE MultiParamTypeClasses, DeriveFunctor, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, DeriveFunctor, FlexibleInstances,
+	GeneralizedNewtypeDeriving #-}
 import Prelude hiding (span,lines)
 import Data.List hiding (span,lines)
 import Data.Set
 import ShowMatrix
 import GroupAction
 
--- p = 3
-p = 2
+p = 3
+-- p = 2
 mp = flip mod p
 
 weil (a1,a2,a3,a4) (b1,b2,b3,b4) = mp (a1*b4 - b1*a4 + a2*b3 - b2*a3) 
@@ -19,7 +20,7 @@ instance Num (Integer,Integer,Integer,Integer) where
 	fromInteger i = (i,i,i,i)
 
 type Line = (Integer,Integer,Integer,Integer)
-newtype Plane = Plane (Line,Line) deriving Show
+newtype Plane = Plane (Line,Line) deriving (Show,GroupAction Sp4_3, Ord)
 
 instance Eq Plane where
 	Plane(p1,q1) ==Plane(p2,q2) = span p1 q1 == span p2 q2
@@ -38,13 +39,13 @@ degenerate (Plane (l1,l2)) = weil l1 l2 == 0
 
 span x y = nub $ sort [ scale a x + scale b y | a<-[0..p-1],b<-[0..p-1]]
 
--- 81 nichtdegenerierte Ebenen (vs 49 degenerierte)
+-- 90 nichtdegenerierte Ebenen (vs 40 degenerierte)
 nodeg = [x | x<-planes , not $ degenerate x]
 
--- Shifts von nichtdegenerierten (insgesamt 675)
+-- Shifts von nichtdegenerierten (insgesamt 810)
 translates = nub [ sort [ v + w | v<- span x y ] | Plane (x,y) <- nodeg, w <- bas]  
 
--- Matrix (vom Rang 72)
+-- Matrix (vom Rang 81)
 oo = [ [ if any (b==) c then 1 else 0 |b<-bas] |c <- translates]
 
 q = writeFile "Divisible3.txt" $ showGapMat2 oo
@@ -55,6 +56,11 @@ data Sp4_2 = Sp4_2_A | Sp4_2_B deriving (Show, Eq, Enum)
 instance GroupAction Sp4_2 Line where
 	gAct Sp4_2_A (a,b,c,d) = (mp$ a+c+d, mp$ a+d,mp$b+d,mp$a+b+c+d)
 	gAct Sp4_2_B (a,b,c,d) = (c,a,d,b)
+
+data Sp4_3 = Sp4_3_A | Sp4_3_B deriving (Show, Eq, Enum) 
+instance GroupAction Sp4_3 Line where
+	gAct Sp4_3_A (a,b,c,d) = (mp$2*a, b,c,mp$2*d)
+	gAct Sp4_3_B (a,b,c,d) = (mp$a+c,a,mp$b+d,mp$ -b)
 
 triples = nub [ fromList [x,y,-x-y] | x<-bas, y<-bas, x/=y, x/=0, y/=0]
 
