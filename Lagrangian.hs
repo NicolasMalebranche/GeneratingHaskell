@@ -20,7 +20,7 @@ instance Num (Integer,Integer,Integer,Integer) where
 	fromInteger i = (i,i,i,i)
 
 type Line = (Integer,Integer,Integer,Integer)
-newtype Plane = Plane (Line,Line) deriving (Show,GroupAction Sp4_3, Ord)
+newtype Plane = Plane (Line,Line) deriving (Show,Ord)
 
 instance Eq Plane where
 	Plane(p1,q1) ==Plane(p2,q2) = span p1 q1 == span p2 q2
@@ -41,12 +41,15 @@ span x y = nub $ sort [ scale a x + scale b y | a<-[0..p-1],b<-[0..p-1]]
 
 -- 90 nichtdegenerierte Ebenen (vs 40 degenerierte)
 nodeg = [x | x<-planes , not $ degenerate x]
+degen = [x | x<-planes , degenerate x]
 
 -- Shifts von nichtdegenerierten (insgesamt 810)
 translates = nub [ sort [ v + w | v<- span x y ] | Plane (x,y) <- nodeg, w <- bas]  
 
 -- Matrix (vom Rang 81)
 oo = [ [ if any (b==) c then 1 else 0 |b<-bas] |c <- translates]
+
+opi = [[ if any (b==) p then 1 else if any (b+t ==) p then -1 else 0 |b<-bas]  | Plane (a,aa) <- degen, let p = span a aa, t<- bas, t/=0 ]
 
 q = writeFile "Divisible3.txt" $ showGapMat2 oo
 
