@@ -49,9 +49,9 @@ translates = nub [ sort [ v + w | v<- span x y ] | Plane (x,y) <- nodeg, w <- ba
 -- Matrix (vom Rang 81)
 oo = [ [ if any (b==) c then 1 else 0 |b<-bas] |c <- translates]
 
-opi = [[ if any (b==) p then 1 else if any (b+t ==) p then -1 else 0 |b<-bas]  | Plane (a,aa) <- degen, let p = span a aa, t<- bas, t/=0 ]
+opi = [[ if any (b==) p then 1 else if any (b+t ==) p then -1 else 0 |b<-bas]  | Plane (a,aa) <- nodeg, let p = span a aa, t<- bas, not $ t `elem` p ]
 
-q = writeFile "Divisible3.txt" $ showGapMat2 oo
+q = writeFile "Divisible3.txt" $ showGapMat2 opi
 
 -- Symplektische Gruppe
 -- http://www.maths.usyd.edu.au/u/don/papers/genAC.pdf
