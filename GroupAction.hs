@@ -1,15 +1,12 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
--- Gruppenwirkungen und endliche Gruppen
+-- Gruppenwirkungen
 module GroupAction where
 
-import Data.Group
-import Data.Monoid
 import Data.List
 import qualified Data.Set as Set
 
-
--- (Links-)Gruppenwirkungen
+-- Gruppenwirkungen
 class GroupAction g x where
 	gAct :: g -> x -> x
 
@@ -22,8 +19,16 @@ instance GroupAction g x => GroupAction g [(x,a)] where
 instance (Ord x,GroupAction g x) => GroupAction g (Set.Set x) where
 	gAct g = Set.map (gAct g)
 
-instance (GroupAction g x, GroupAction h y) => GroupAction (g,h) (x,y) where
-	gAct (g,h) (x,y) = (gAct g x, gAct h y) 
+instance (GroupAction g x, GroupAction g y) => GroupAction g (x,y) where
+	gAct g (x,y) = (gAct g x, gAct g y) 
+
+instance (GroupAction g x, GroupAction g y, GroupAction g z) 
+	=> GroupAction g (x,y,z) where
+	gAct g (x,y,z) = (gAct g x, gAct g y, gAct g z) 
+
+instance (GroupAction g x, GroupAction g y, GroupAction g z, GroupAction g u) 
+	=> GroupAction g (x,y,z,u) where
+	gAct g (x,y,z,u) = (gAct g x, gAct g y, gAct g z, gAct g u) 
 
 -- Orbit eines Elements x unter der Gruppe erzeugt von gen
 gOrbit gen x = run (Set.singleton x) where
@@ -39,13 +44,4 @@ gOrbits gen s = run s where
 -- Ist x ein invariantes Element?
 gInvariant gen x = all (x ==) [ gAct g x | g <- gen ]
 
--- Erzeugnis der Menge gen
-gSpan gen = run (Set.singleton mempty) where
-	run s = if s==ns then s else run $ Set.union s ns where
-		ns = Set.unions [ Set.map (mappend g) s | g<-gen ] 
-
-
--- Stabilisator des Elements x der Gruppe erzeugt von gen.
--- Terminiert, wenn die Gruppe endlich ist
-gStabilizer gen x = Set.filter ((x==).flip gAct x) $ gSpan gen
 
