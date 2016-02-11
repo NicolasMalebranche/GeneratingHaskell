@@ -19,16 +19,6 @@ instance GroupAction g x => GroupAction g [(x,a)] where
 instance (Ord x,GroupAction g x) => GroupAction g (Set.Set x) where
 	gAct g = Set.map (gAct g)
 
-instance (GroupAction g x, GroupAction g y) => GroupAction g (x,y) where
-	gAct g (x,y) = (gAct g x, gAct g y) 
-
-instance (GroupAction g x, GroupAction g y, GroupAction g z) 
-	=> GroupAction g (x,y,z) where
-	gAct g (x,y,z) = (gAct g x, gAct g y, gAct g z) 
-
-instance (GroupAction g x, GroupAction g y, GroupAction g z, GroupAction g u) 
-	=> GroupAction g (x,y,z,u) where
-	gAct g (x,y,z,u) = (gAct g x, gAct g y, gAct g z, gAct g u) 
 
 -- Orbit eines Elements x unter der Gruppe erzeugt von gen
 gOrbit gen x = run (Set.singleton x) where
