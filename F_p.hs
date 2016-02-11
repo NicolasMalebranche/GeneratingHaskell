@@ -3,6 +3,7 @@
 module F_p where
 
 import Data.Ratio
+import PrimeFactors
 
 -- Stellt ein paar Mod-p Koerper zur Verfuegung
 -- Hat man Bedarf fuer einen neuen, kann man wie bei 
@@ -32,7 +33,6 @@ instance ModP Mod5 Int where
 	p _ = 5
 	con = Mod5
 	decon (Mod5 i) = i
-	primRoot = 2
 
 data Mod7
 newtype instance F Mod7 = Mod7 Int
@@ -40,7 +40,6 @@ instance ModP Mod7 Int where
 	p _ = 7
 	con = Mod7
 	decon (Mod7 i) = i
-	primRoot = 3
 
 -- Fuer p > 2^16 sollte man seine Zahlen nicht
 -- mehr als Int speichern, sondern z. B. als Integer
@@ -61,6 +60,12 @@ class Integral i => ModP a i | a->i where
 	con :: i -> F a
 	decon :: F a -> i
 	primRoot :: F a
+	primRoot = r where 
+		r = check 1 
+		phi =  fromIntegral (p r) - 1 
+		divs = map (div phi . fst) (primeFactors phi) 
+		check r = if all (/=1) [ r^e | e<-divs ] 
+			then r else check (r+1)
 
 instance (ModP fp i, Show i) => Show (F fp) where
 	show x = show (decon x) -- ++ " (mod " ++ show (p x) ++ ")"
@@ -96,6 +101,5 @@ instance (ModP fp i) => Enum (F fp) where
 	enumFrom a = enumFromTo a (a-1)
 	enumFromThenTo a s b = if a == b then [a] else a : enumFromThenTo s (s*2-a) b
 	enumFromThen a s = enumFromThenTo a s (a*2-s)
-
 
 
