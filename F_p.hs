@@ -73,6 +73,9 @@ instance (ModP fp i, Show i) => Show (F fp) where
 instance (ModP fp i) => Eq (F fp) where
 	a == b = 0 == ((decon a - decon b) `mod` (p a))
 
+instance (ModP fp i) => Ord (F fp) where
+	compare a b = compare (decon a)  (decon b)
+
 instance (ModP fp i) => Num (F fp) where
 	a + b = con $ (decon a + decon b) `mod` (p a)
 	a - b = con $ (decon a - decon b) `mod` (p a)
