@@ -44,7 +44,7 @@ newtype Line = Line Vect deriving (Show,Eq,Ord)
 normalizeLine (Line (Vect v)) = Line $ s v *^ Vect v where
 	s [] = 1; s(x:y) = if x/=0 then recip x else s y
 genLine v = normalizeLine (Line v)
-allLines = nub $ map genLine allVectors
+allLines = toAscList $ fromList $ map genLine $ filter (zeroV/=) allVectors
 spanLine (Line l) = [s*^l | s<-allCoeffs]
 instance GroupAction Sp Line where
 	gAct g (Line l) = genLine $ gAct g l
@@ -60,6 +60,10 @@ allPlanes = toAscList $ fromList [genPlane a b | Line a <- allLines,
 	Line b <- allLines, not $ collinear a b]
 isDegenerate (Plane (a,b)) = a <.> b == 0
 nondegPlanes = filter (not. isDegenerate) allPlanes
+orthogonalPlane (Plane (a,b)) = fir allLines where 
+	fir (Line v:r) = if a <.> v ==0  && b<.> v==0 then sec r else fir r where
+		sec (Line w:r) = if a <.> w ==0  && b<.> w==0 && not (collinear v w) then 
+			genPlane v w else sec r
 instance GroupAction Sp Plane where
 	gAct g (Plane (a,b)) = genPlane (gAct g a) (gAct g b)
 
