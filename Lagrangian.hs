@@ -1,69 +1,103 @@
 {-# LANGUAGE MultiParamTypeClasses, DeriveFunctor, FlexibleInstances,
-	GeneralizedNewtypeDeriving #-}
+	GeneralizedNewtypeDeriving, TypeFamilies #-}
+
+module Lagrangian where
+
 import Prelude hiding (span,lines)
 import Data.List hiding (span,lines)
-import Data.Set
+import Data.Set hiding (map,filter,foldr)
 import ShowMatrix
 import GroupAction
+import F_p
+import SymplecticGroup
+import Data.AdditiveGroup
+import Data.VectorSpace
 
-p = 3
--- p = 2
-mp = flip mod p
+dim = 4
+type Coeff = F Mod3
+instance AdditiveGroup Coeff where
+	zeroV = 0
+	(^+^) = (+)
+	negateV = negate
+allCoeffs = [0..] :: [Coeff]
 
-weil (a1,a2,a3,a4) (b1,b2,b3,b4) = mp (a1*b4 - b1*a4 + a2*b3 - b2*a3) 
 
-bas = [ (a,b,c,d)::Line | a <-[0..p-1], b<-[0..p-1], c<-[0..p-1], d<-[0..p-1] ]
+newtype Vect = Vect [Coeff] deriving (Show,Eq,Ord)
+collinear v w = w==zeroV || any (v==) [s*^w | s<- allCoeffs]
+allVectors = map Vect $ a dim where 
+	a 0 = [[]] 
+	a n = [c:v | v <- a (n-1), c<-allCoeffs ]
+instance AdditiveGroup Vect where
+	zeroV = Vect $ replicate dim 0
+	Vect a ^+^ Vect b = Vect $ zipWith (+) a b
+	negateV (Vect a) = Vect $ map negate a
+instance VectorSpace Vect where
+	type Scalar Vect = Coeff
+	s *^ Vect a = Vect $ map (s*) a
+instance InnerSpace Vect where
+	Vect a <.> Vect b = symplecticForm a b 
+instance GroupAction Sp Vect where
+	gAct g (Vect v) = Vect $ gAct g v
 
-instance Num (Integer,Integer,Integer,Integer) where
-	(a1,a2,a3,a4)+(b1,b2,b3,b4) = (mp$a1+b1,mp$a2+b2,mp$a3+b3,mp$a4+b4)
-	negate (a1,a2,a3,a4) = (mp$ -a1,mp$ -a2,mp$ -a3,mp$ -a4)
-	fromInteger i = (i,i,i,i)
+	
+newtype Line = Line Vect deriving (Show,Eq,Ord)
+normalizeLine (Line (Vect v)) = Line $ s v *^ Vect v where
+	s [] = 1; s(x:y) = if x/=0 then recip x else s y
+genLine v = normalizeLine (Line v)
+allLines = nub $ map genLine allVectors
+spanLine (Line l) = [s*^l | s<-allCoeffs]
+instance GroupAction Sp Line where
+	gAct g (Line l) = genLine $ gAct g l
 
-type Line = (Integer,Integer,Integer,Integer)
-newtype Plane = Plane (Line,Line) deriving (Show,Ord)
 
-instance Eq Plane where
-	Plane(p1,q1) ==Plane(p2,q2) = span p1 q1 == span p2 q2
+newtype Plane = Plane (Vect,Vect) deriving (Show,Eq,Ord)
+spanPlane (Plane (a,b)) = toAscList $ fromList [s*^a ^+^ t*^b | s<-allCoeffs, t<-allCoeffs]
+normalizePlane p = fir $ spanPlane p where
+	fir (v:r) = if v/=zeroV then sec r else fir r where
+		sec (w:r) = if collinear v w then sec r else Plane (v,w)
+genPlane a b = normalizePlane $ Plane (a,b)
+allPlanes = toAscList $ fromList [genPlane a b | Line a <- allLines, 
+	Line b <- allLines, not $ collinear a b]
+isDegenerate (Plane (a,b)) = a <.> b == 0
+nondegPlanes = filter (not. isDegenerate) allPlanes
+instance GroupAction Sp Plane where
+	gAct g (Plane (a,b)) = genPlane (gAct g a) (gAct g b)
 
-scale i (a,b,c,d) = (mp$i*a,mp$i*b,mp$i*c,mp$i*d)
 
--- 40 Ursprungsgeraden
-lines = (0,0,0,1):[ (0,0,1,d) | d<-[0..p-1] ] ++[ (0,1,c,d) | c<-[0..p-1], d<-[0..p-1] ] ++ 
-	[ (1,b,c,d) | b<-[0..p-1], c<-[0..p-1], d<-[0..p-1] ] :: [Line]
-
--- 130 Ebenen
-planes :: [Plane]
-planes = nub [Plane (l1,l2) | l1<-lines, l2<-lines, length ( span l1 l2) == fromInteger p^2]
-
-degenerate (Plane (l1,l2)) = weil l1 l2 == 0
-
-span x y = nub $ sort [ scale a x + scale b y | a<-[0..p-1],b<-[0..p-1]]
-
--- 90 nichtdegenerierte Ebenen (vs 40 degenerierte)
-nodeg = [x | x<-planes , not $ degenerate x]
-degen = [x | x<-planes , degenerate x]
-
--- Shifts von nichtdegenerierten (insgesamt 810)
-translates = nub [ sort [ v + w | v<- span x y ] | Plane (x,y) <- nodeg, w <- bas]  
-
--- Matrix (vom Rang 81)
-oo = [ [ if any (b==) c then 1 else 0 |b<-bas] |c <- translates]
-
-opi = [[ if any (b==) p then 1 else if any (b+t ==) p then -1 else 0 |b<-bas]  | Plane (a,aa) <- nodeg, let p = span a aa, t<- bas, not $ t `elem` p ]
-
-q = writeFile "Divisible3.txt" $ showGapMat2 opi
-
--- Symplektische Gruppe
--- http://www.maths.usyd.edu.au/u/don/papers/genAC.pdf
-data Sp4_2 = Sp4_2_A | Sp4_2_B deriving (Show, Eq, Enum) 
-instance GroupAction Sp4_2 Line where
-	gAct Sp4_2_A (a,b,c,d) = (mp$ a+c+d, mp$ a+d,mp$b+d,mp$a+b+c+d)
-	gAct Sp4_2_B (a,b,c,d) = (c,a,d,b)
-
-data Sp4_3 = Sp4_3_A | Sp4_3_B deriving (Show, Eq, Enum) 
-instance GroupAction Sp4_3 Line where
-	gAct Sp4_3_A (a,b,c,d) = (mp$2*a, b,c,mp$2*d)
-	gAct Sp4_3_B (a,b,c,d) = (mp$a+c,a,mp$b+d,mp$ -b)
-
-triples = nub [ fromList [x,y,-x-y] | x<-bas, y<-bas, x/=y, x/=0, y/=0]
+dimExt = (dim*(dim-1)) `div` 2
+newtype Ext = Ext [Coeff] deriving (Show,Eq,Ord)
+instance AdditiveGroup Ext where
+	zeroV = Ext $ replicate dimExt 0
+	Ext a ^+^ Ext b = Ext $ zipWith (+) a b
+	negateV (Ext a) = Ext $ map negate a
+instance VectorSpace Ext where
+	type Scalar Ext = Coeff
+	s *^ Ext a = Ext $ map (s*) a
+ext (Vect a) (Vect b) = Ext [a!!i * b!!j - a!!j * b!!i | i<-[0..dim-1],j<-[i+1..dim-1]]
+allExt= map Ext $ a dimExt where 
+	a 0 = [[]] 
+	a n = [c:v | v <- a (n-1), c<-allCoeffs ]
+instance GroupAction Sp Ext where
+	gAct g = f where 
+		e = [gAct g $ Vect [if i==j then 1 else 0 | i<- [1..dim]]| j<-[1..dim]]
+		le = [ ext (e!!i)(e!!j) | i<-[0..dim-1],j<-[i+1..dim-1]]
+		f (Ext v) = foldr (^+^) zeroV $ zipWith (*^) v le
+		
+dimSym = (dimExt*(dimExt+1)) `div` 2
+newtype Sym = Sym [Coeff] deriving (Show,Eq,Ord)
+instance AdditiveGroup Sym where
+	zeroV = Sym $ replicate dimSym 0
+	Sym a ^+^ Sym b = Sym $ zipWith (+) a b
+	negateV (Sym a) = Sym $ map negate a
+instance VectorSpace Sym where
+	type Scalar Sym = Coeff
+	s *^ Sym a = Sym $ map (s*) a
+sym (Ext a) (Ext b) = Sym [a!!i * b!!j + if i/=j then a!!j * b!!i else 0
+	| i<-[0..dimExt-1],j<-[i..dimExt-1]]
+instance GroupAction Sp Sym where
+	gAct g = f where 
+		gac = gAct g
+		e = [gac $ Ext [if i==j then 1 else 0 | i<- [1..dimExt]]| j<-[1..dimExt]]
+		le = [ sym (e!!i)(e!!j) | i<-[0..dimExt-1],j<-[i..dimExt-1]]
+		f (Sym v) = foldr (^+^) zeroV $ zipWith (*^) v le
 
