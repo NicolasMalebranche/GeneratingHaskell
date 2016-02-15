@@ -3,8 +3,6 @@
 module F_p where
 
 import Data.Ratio
-import Data.Array
-import Data.List
 import PrimeFactors
 
 -- Stellt ein paar Mod-p Koerper zur Verfuegung
