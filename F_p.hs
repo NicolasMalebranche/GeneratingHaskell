@@ -3,6 +3,8 @@
 module F_p where
 
 import Data.Ratio
+import Data.Array
+import Data.List
 import PrimeFactors
 
 -- Stellt ein paar Mod-p Koerper zur Verfuegung
@@ -65,7 +67,7 @@ class (Integral (ModStore a)) => ModP a where
 	decon :: F a -> ModStore a
 	
 
-class (Fractional f, Eq f) => FiniteField f where
+class (Fractional f) => FiniteField f where
 	primRoot :: f
 	ffChar :: Integral i => f -> i
 	ffOrder :: Integral i => f -> i
@@ -81,6 +83,7 @@ instance (ModP fp) => FiniteField (F fp) where
 	ffChar = fromIntegral . p
 	ffOrder = fromIntegral . p
 	ffAll = [0..]
+	
 
 instance (ModP fp ,Show (ModStore fp)) => Show (F fp) where
 	show x = show (decon x) -- ++ " (mod " ++ show (p x) ++ ")"
