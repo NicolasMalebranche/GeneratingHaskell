@@ -67,6 +67,35 @@ orthogonalPlane (Plane (a,b)) = fir allLines where
 instance GroupAction Sp Plane where
 	gAct g (Plane (a,b)) = genPlane (gAct g a) (gAct g b)
 
+planeTranslates = [x| p<-nondegPlanes, let ps = spanPlane p, 
+	x<-toAscList$fromList [ map (^+^ v) ps | v <- spanPlane $ orthogonalPlane p] ]
+
+planeSpanSum = [ [if any (b==) ps then 1 else 0 | b<-allVectors]| p<-nondegPlanes , let ps = spanPlane p]
+writePlaneSpanSum = writeFile "PlaneSpanSum.txt" $ showGapMat2 planeSpanSum
+
+planeSpanIdeal = [ [if any (b==) pt then 1 else 0 | b<-allVectors]| pt<-planeTranslates ]
+writePlaneSpanIdeal = writeFile "PlaneSpanIdeal.txt" $ showGapMat2 planeSpanIdeal
+
+planeSpanShift = [ [if any (b==) ps then -1 else if any ((b^-^t)==) ps then 1 else 0 | b<-allVectors]| 
+	p<-nondegPlanes, let ps = spanPlane p, t <- spanPlane $ orthogonalPlane p, t/=zeroV]
+writeSpanShift = writeFile "PlaneSpanShift.txt" $ showGapMat2 planeSpanShift
+
+classP = (sym e e, p) where
+	p@(Plane(a,b)) = head nondegPlanes
+	e = ext a b
+
+instance GroupAction Sp (Sym,Plane) where
+	gAct g (x,y) = (gAct g x, gAct g y)
+	
+symplClass = toList $ gOrbit [SpR,SpJ,SpD] classP
+
+sumSpan = [ x++[if any (b==) (map (t^+^) ps) then 1 else 0 | b<-allVectors] | (Sym x,p)<-symplClass, 
+	let ps =(spanPlane p), t<-spanPlane (orthogonalPlane p) ]
+writeSumSpan = writeFile "SumSpan.txt" $ showGapMat2 sumSpan
+
+superSpan = [ x++[if any (b==) ps then -1 else if any ((b^-^t)==) ps then 1 else 0 | b<-allVectors] | (Sym x,p)<-symplClass, 
+	let ps =(spanPlane p), t<-spanPlane (orthogonalPlane p), t/= zeroV ]
+writeSuperSpan = writeFile "SuperSpan.txt" $ showGapMat2 superSpan
 
 dimExt = (dim*(dim-1)) `div` 2
 newtype Ext = Ext [Coeff] deriving (Show,Eq,Ord)
