@@ -1,5 +1,5 @@
-{-# LANGUAGE TypeFamilies, EmptyDataDecls, FunctionalDependencies, 
-			 MultiParamTypeClasses, UndecidableInstances  #-}
+{-# LANGUAGE TypeFamilies, EmptyDataDecls, FlexibleContexts, 
+			  UndecidableInstances  #-}
 module F_p where
 
 import Data.Ratio
@@ -13,30 +13,32 @@ import PrimeFactors
 
 data Mod2
 newtype instance F Mod2 = Mod2 Int
-instance ModP Mod2 Int where
+instance ModP Mod2 where
+	type ModStore Mod2 = Int
 	p _ = 2
 	con = Mod2
 	decon (Mod2 i) = i
-	primRoot = 1
 
 data Mod3
 newtype instance F Mod3 = Mod3 Int
-instance ModP Mod3 Int where
+instance ModP Mod3 where
+	type ModStore Mod3 = Int
 	p _ = 3
 	con = Mod3
 	decon (Mod3 i) = i
-	primRoot = 2
 
 data Mod5
 newtype instance F Mod5 = Mod5 Int
-instance ModP Mod5 Int where
+instance ModP Mod5 where
+	type ModStore Mod5 = Int
 	p _ = 5
 	con = Mod5
 	decon (Mod5 i) = i
 
 data Mod7
 newtype instance F Mod7 = Mod7 Int
-instance ModP Mod7 Int where
+instance ModP Mod7 where
+	type ModStore Mod7 = Int
 	p _ = 7
 	con = Mod7
 	decon (Mod7 i) = i
@@ -45,7 +47,8 @@ instance ModP Mod7 Int where
 -- mehr als Int speichern, sondern z. B. als Integer
 data Mod23879539
 newtype instance F Mod23879539 = Mod23879539 Integer
-instance ModP Mod23879539 Integer where
+instance ModP Mod23879539 where
+	type ModStore Mod23879539 = Integer
 	p _ = 23879539
 	con = Mod23879539
 	decon (Mod23879539 i) = i
@@ -55,28 +58,40 @@ instance ModP Mod23879539 Integer where
 
 data family F :: * -> *
 
-class Integral i => ModP a i | a->i where
-	p :: F a -> i
-	con :: i -> F a
-	decon :: F a -> i
-	primRoot :: F a
+class (Integral (ModStore a)) => ModP a where
+	type ModStore a :: *
+	p :: F a -> ModStore a
+	con :: ModStore a -> F a
+	decon :: F a -> ModStore a
+	
+
+class (Fractional f, Eq f) => FiniteField f where
+	primRoot :: f
+	ffChar :: Integral i => f -> i
+	ffOrder :: Integral i => f -> i
+	ffAll :: [f]
+
+instance (ModP fp) => FiniteField (F fp) where
 	primRoot = r where 
 		r = check 1 
 		phi =  fromIntegral (p r) - 1 
 		divs = map (div phi . fst) (primeFactors phi) 
 		check r = if all (/=1) [ r^e | e<-divs ] 
 			then r else check (r+1)
+	ffChar = fromIntegral . p
+	ffOrder = fromIntegral . p
+	ffAll = [0..]
 
-instance (ModP fp i, Show i) => Show (F fp) where
+instance (ModP fp ,Show (ModStore fp)) => Show (F fp) where
 	show x = show (decon x) -- ++ " (mod " ++ show (p x) ++ ")"
 
-instance (ModP fp i) => Eq (F fp) where
+instance (ModP fp) => Eq (F fp) where
 	a == b = 0 == ((decon a - decon b) `mod` (p a))
 
-instance (ModP fp i) => Ord (F fp) where
+instance (ModP fp) => Ord (F fp) where
 	compare a b = compare (decon a)  (decon b)
 
-instance (ModP fp i) => Num (F fp) where
+instance (ModP fp) => Num (F fp) where
 	a + b = con $ (decon a + decon b) `mod` (p a)
 	a - b = con $ (decon a - decon b) `mod` (p a)
 	a * b = con $ (decon a * decon b) `mod` (p a)
@@ -85,7 +100,7 @@ instance (ModP fp i) => Num (F fp) where
 	fromInteger i = x where 
 		x = con $ fromInteger $ i `mod` fromIntegral (p x)
 
-instance (ModP fp i) => Fractional (F fp) where
+instance (ModP fp) => Fractional (F fp) where
 	recip a = con $ ra where
 		(_,(ra,_)) = euclid (decon a) (p a)
 		euclid 0 b = (b, (0, 1))
@@ -95,7 +110,7 @@ instance (ModP fp i) => Fractional (F fp) where
 	fromRational r = fromInteger (numerator r) / 
 		fromInteger (denominator r)
 
-instance (ModP fp i) => Enum (F fp) where
+instance (ModP fp) => Enum (F fp) where
 	toEnum i = x where x = con $ fromIntegral i `mod` p x
 	fromEnum = fromIntegral . decon
 	succ x = x+1
