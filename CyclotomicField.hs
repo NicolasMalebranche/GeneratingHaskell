@@ -47,7 +47,13 @@ cycImaginaryPart (Cyc r p)  = sum $ zipWith (*) (map realToFrac $ polyToList p)
 cycNorm a = sqrt $ cycRealPart $ a * cycConjugate a
 
 instance (Eq a, Num a) => Eq (CyclotomicField a) where
-	x==y = cycClean x == cycClean y
+	x==y = xd==yd && xp==yp where
+		(Cyc xd xp, Cyc yd yp) = (cycClean x, cycClean y)
+
+-- Etwas künstliche Ord-Instanz
+instance (Ord a, Num a) => Ord (CyclotomicField a) where
+	compare x y = compare (xd,xp) (yd,yp) where
+		(Cyc xd xp, Cyc yd yp) = (cycClean x, cycClean y)
 
 instance (Eq a, Num a) => Num (CyclotomicField a) where
 	Cyc r p + Cyc r' p' = Cyc r'' $ polyStretch a p + polyStretch b p'

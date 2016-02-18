@@ -126,6 +126,9 @@ instance (Eq a) => Eq (Polynomial a) where
 		isEq i (Elem a ar) (Elem b br) = 
 			if i > bound then True else a==b && isEq (i+1) ar br
 
+instance (Ord a) => Ord (Polynomial a) where
+	compare p q = compare (polyToList p) (polyToList q) 
+
 instance (Show a) => Show (Polynomial a) where
 	show p = let
 		xpower i = if i == 0 then "" else if i== 1 then "x" else "x^" ++ show i
