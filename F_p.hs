@@ -3,6 +3,7 @@
 module F_p where
 
 import Data.Ratio
+import Data.Int
 import PrimeFactors
 
 -- Stellt ein paar Mod-p Koerper zur Verfuegung
@@ -12,38 +13,38 @@ import PrimeFactors
 -- automatisch erzeugt
 
 data Mod2
-newtype instance F Mod2 = Mod2 Int
+newtype instance F Mod2 = Mod2 Int8
 instance ModP Mod2 where
-	type ModStore Mod2 = Int
+	type ModStore Mod2 = Int8
 	p _ = 2
 	con = Mod2
 	decon (Mod2 i) = i
 
 data Mod3
-newtype instance F Mod3 = Mod3 Int
+newtype instance F Mod3 = Mod3 Int8
 instance ModP Mod3 where
-	type ModStore Mod3 = Int
+	type ModStore Mod3 = Int8
 	p _ = 3
 	con = Mod3
 	decon (Mod3 i) = i
 
 data Mod5
-newtype instance F Mod5 = Mod5 Int
+newtype instance F Mod5 = Mod5 Int8
 instance ModP Mod5 where
-	type ModStore Mod5 = Int
+	type ModStore Mod5 = Int8
 	p _ = 5
 	con = Mod5
 	decon (Mod5 i) = i
 
 data Mod7
-newtype instance F Mod7 = Mod7 Int
+newtype instance F Mod7 = Mod7 Int8
 instance ModP Mod7 where
-	type ModStore Mod7 = Int
+	type ModStore Mod7 = Int8
 	p _ = 7
 	con = Mod7
 	decon (Mod7 i) = i
 
--- Fuer p > 2^16 sollte man seine Zahlen nicht
+-- Fuer p > 2^14 sollte man seine Zahlen nicht
 -- mehr als Int speichern, sondern z. B. als Integer
 data Mod23879539
 newtype instance F Mod23879539 = Mod23879539 Integer
