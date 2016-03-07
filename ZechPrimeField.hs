@@ -40,6 +40,12 @@ instance (Ord f, FiniteField f) => ZechField (Zech f) where
 	zechE = Zech (if odd o then div (o-1) 2 else 0) where
 		o = ffOrder (primRoot :: f)
 
+instance Eq (Zech a) where
+	Zech a == Zech b = a == b
+
+instance Ord (Zech a) where
+	compare (Zech a) (Zech b) = compare a b
+
 
 instance (Ord f, FiniteField f) => Show (Zech f) where
 	show = \(Zech i) -> if i == -1 then "0" else 
