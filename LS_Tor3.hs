@@ -6,6 +6,18 @@ import LS_Frobenius
 import LS_Operators
 import Data.Ratio
 import Data.List
+import Elementary
+
+formulaCh k n = let
+	a = Tor 1
+	x = nakaState $ Ch k a : replicate n (P (-1) 0)
+	term i = let 
+		j = k+1-i
+		factor = (-1)^(i+1)* binomial n i / fromIntegral (i^j * factorial j)
+		in scale factor $ nakaState $ replicate (n-i) (P (-1) 0) ++ 
+			replicate j Del ++ [P(-i)a]
+	y = foldr add (Vak []) [term i | i<-[1 .. k+1]]
+	in putStrLn $ show x ++ "\n\n" ++ show (x `add` scale(-1)y)
 
 pairing a b = case multLists [a] b of 
 	Vak [ ([P (-1) (Tor 15) ,P (-1) (Tor 15) ,P (-1) (Tor 15) ] , a) ] -> a
