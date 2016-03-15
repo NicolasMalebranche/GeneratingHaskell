@@ -59,6 +59,11 @@ facDiff n op = let
 	fac = product [1..fromIntegral n] 
 	in [ (d1++[op]++d2,fromIntegral b/fac) | d1<-ders | d2 <- dels | b <- bins n]
 
+ad n u v = let
+	rec = ad (n-1) u v
+	--com = [ ([Del,P(-1) 0],1) , ([P(-1) 0,Del], -1)]
+	new = [ z | (x,a) <- rec, (y,b) <- u, z <- [(x++y,-a*b),(y++x,a*b)]]
+	in if n==0 then v else sparseNub new
 
 commutator (P n a) (P m b) = if n+m==0 then [ ([], gfa_bilinear a b*fromIntegral n) ] else []
 commutator Del (P n a) = ([L n a], fromIntegral n) : 
