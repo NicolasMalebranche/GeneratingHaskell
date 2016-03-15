@@ -20,7 +20,7 @@ signedSort compare par list = let
 	(res,k) =  ss (zip list $ map par list) (length list) 
 	toSign Odd = negate
 	toSign Even = id
-	ss l 0 = (l,1)
+	ss l 0 = (l,1 :: Int)
 	ss l 1 = (l,1)
 	ss l n = let 
 		h = div n 2
@@ -38,7 +38,7 @@ signedSort compare par list = let
 	dropSigned 0 l = (0,l)
 	dropSigned n ((_,a):l) = let (g,d) = dropSigned (n-1) l 
 		in (g+a,d)
-	in (map fst res , k::Int) 
+	in (map fst res , fromIntegral k) 
 
 
 
