@@ -83,6 +83,7 @@ sparseNub l = sn (head sl) (tail sl) where
 scal 0 _ = []
 scal a l = [ (p,a*x) | (p,x) <- l]
 
+-- Cohomology of K3 surfaces
 newtype K3Domain = K3 Int deriving (Enum,Eq,Num,Ord,Ix)
 instance Show K3Domain where show (K3 i) = show i
 instance GradedFrobeniusAlgebra K3Domain where
@@ -130,7 +131,7 @@ inve8= array ((1,1),(8,8)) $
 		-14, -10, -7, -3, -6, -9, -12, -15, -10, -8, -5, -2, -4, -6, -8,
 		-10, -7, -5, -4 :: Int]
 
--- BilinearForm auf K3 Flächen
+-- Bilinear form on K3 surfaces
 bilK3_func ii jj = let 
 	(i,j) = (min ii jj, max ii jj) 
 	u 1 2 = 1
@@ -148,7 +149,7 @@ bilK3_func ii jj = let
 	if (i >= 15) && (j<= 22) then e8 ! ((i-14), (j-14))  else
 	0 :: Int
 
--- Inverse Bilinearform
+-- Inverse bilinear form
 bilK3inv_func ii jj = let 
 	(i,j) = (min ii jj, max ii jj) 
 	u 1 2 = 1
@@ -166,7 +167,35 @@ bilK3inv_func ii jj = let
 	if (i >= 15) && (j<= 22) then inve8 ! ((i-14), (j-14))  else
 	0 :: Int
 
+-- Cohomology of projective space
+newtype P2Domain = P2 Int deriving (Show,Eq,Ord,Ix,Num)
+instance GradedFrobeniusAlgebra P2Domain where
+	gfa_deg (P2 0) = -2
+	gfa_deg (P2 1) = 0
+	gfa_deg (P2 2) = 2
+	
+	gfa_1 = [(P2 0,1)]
+	gfa_K = [(P2 1,-3)]
+	
+	gfa_T (P2 2) = -1
+	gfa_T _ = 0
+	
+	gfa_base = [0,1,2]
+	gfa_baseOfDeg 0 = [1]
+	gfa_baseOfDeg (-2) = [0]
+	gfa_baseOfDeg 2 = [2]
+	gfa_baseOfDeg _ = []
+	
+	gfa_mult (P2 0) i = [(i,1)]
+	gfa_mult i (P2 0) = [(i,1)]
+	gfa_mult (P2 2) _ = []
+	gfa_mult _ (P2 2) = []
+	gfa_mult (P2 1) (P2 1) =  [(2, 1)]
 
+	gfa_bilinearInverse i =  [(2-i, 1)]
+
+
+-- Cohomology of complex torus
 newtype TorusDomain = Tor Int deriving (Enum,Eq,Num,Ord,Ix)
 instance Show TorusDomain where show (Tor i) = show i
 instance GradedFrobeniusAlgebra TorusDomain where
