@@ -63,6 +63,17 @@ adq' m k state = let
 	[left, right, diff] = [ multLists [o] state| o<- [leftO,rightO,diffO]]
 	in putStrLn $ show left ++ "\n\n" ++ show (right `add` diff `add` scale (-1) left)
 
+corollary s m k state = let
+	[kk,mm,ss] =map fromIntegral [k,m,s]
+	a = Tor 0
+	adqs = ad s [([P(-1) 0],1)]
+	one = scal (1%mm^(k+s)) $ adqs $ facDiff (k+s) (P(-m) a)
+	two = scal (1%(ss+mm)^k) $ facDiff k (P(-m-s) a)
+	three = if k<2 then [] else
+		scal (ss%(ss+mm)^(k-2)/24) [(d,x*y*z) | (b,x) <- gfa_euler, (c,y)<- gfa_mult a b, (d,z) <-facDiff (k-2) $ P(-m-s) c] 
+	left = multLists [one] state
+	right = multLists [two++three] state
+	in putStrLn $ show left ++ "\n\n" ++ show (left `add` scale (-1) right)
 
 derQ m k state = let
 	a = P2 0
