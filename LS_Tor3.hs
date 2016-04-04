@@ -188,12 +188,13 @@ writeM4 = writeFile "Matrix4.txt" m where
 	col s = [if denominator p== 1 then numerator p else error"notInt"| t <- bs, let p=pairing s t ]
 	bs = map (\x -> multLists [x] mayK) kum4
 	
--- Basis auf der Kummerschen ? Diskriminante der Selbstschitt-Matrix auf dem Bild in der Kummerschen ist 3^20
-kum4 = [ [([Ch 0 a,Ch 1 0],1/3)] | a<-[5..10]] ++
-	[ [([Ch 0 a,Ch 0 a],1/2),([Ch 1 a],1)] | a<-[5..10]] ++
-	[  j 15 ,  [([Ch 1 0,Ch 1 0],1/9)] , [([Ch 2 0],2/3)] ] ++
-	[ [([Ch 0 a,Ch 0 b],1)]| a<-[5..10], b<-[a+1..10] ] ++
-	[ [([Ch 0 5,Ch 0 10],1/6),([Ch 0 6,Ch 0 9],-1/6),([Ch 0 7,Ch 0 8],1/6)]  ]
+-- Basis auf der Kummerschen ? Diskriminante der Selbstschitt-Matrix auf dem Bild in der Kummerschen ist 3^34
+kum4 = [[([Ch 2 0],2)] ] ++
+	[ [([Ch 0 a,Ch 0 b],1)] | a<-[5..10],b<-[a+1..10]] ++
+	[ [([Ch 1 a],1),([Ch 0 a, Ch 0 a],-1/2)] | a<-[5..10]] ++ 
+	[ [([Ch 0 a,Ch 1 0],1)] | a<-[5..10]] ++
+	[  j $ Tor 15] 
+
 
 -- Indizes in obiger Basis, welche jeden Schnitt durch 3 teilbar haben 
 -- entspricht  [([Ch 0 a,Ch 0 b],1)] mit a,b<[5..10], ab == 0
