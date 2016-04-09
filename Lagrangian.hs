@@ -84,10 +84,47 @@ classP = (sym e e, p) where
 	p@(Plane(a,b)) = head nondegPlanes
 	e = ext a b
 
+sparseNub [] = []
+sparseNub l = sn (head sl) (tail sl) where
+	sl = sortBy ((.fst).compare.fst) l
+	sn (i,x) ((j,y):r) = if i==j then sn (i,x+y) r else app (i,x) $ sn (j,y) r
+	sn ix [] = app ix []
+	app (i,x) r = if x==0 then r else (i,x) : r
+instance Num [(Vect,Coeff)] where
+	a+b = sparseNub $ a++b
+	a*b = sparseNub [ (x ^+^ y,i*j) | (x,i)<-a,(y,j) <-b]
+	negate a = [ (x,negate i) | (x,i)<-a]
+	fromInteger i = [ (Vect [0,0,0,0],fromInteger i)]
+
+toLong element = [case x of {Just (_,i) -> i::Coeff; _ ->0}| b<-allVectors, let x = find ((b==).fst) element]
+fromPlane p= [(t,1::Coeff)| t<-spanPlane p]
+
+generatesD = [
+	Plane(Vect[1,0,0,0],Vect[0,1,0,0]), 
+	Plane(Vect[1,0,0,0],Vect[0,1,0,1]), 
+	Plane(Vect[1,0,0,0],Vect[0,1,0,2]), 
+	Plane(Vect[1,0,0,0],Vect[0,1,1,1]), 
+	Plane(Vect[1,0,0,1],Vect[0,1,2,1]), 
+	Plane(Vect[1,0,1,1],Vect[0,1,0,1]), 
+	Plane(Vect[1,0,1,0],Vect[0,1,0,1]), 
+	Plane(Vect[1,0,1,1],Vect[0,1,2,2]),
+	Plane(Vect[0,0,1,0],Vect[0,0,0,1]) 
+	]
+
+
+maxIdeal =  [ [(v,1::Coeff)]+(-1)  | v<-tail allVectors]
+planeD = [ toLong $ a*m | a<-map fromPlane generatesD, m<-maxIdeal]
+writeD = writeFile "PlaneD.txt" $ showGapMat2 planeD
+
+
+
 instance GroupAction Sp (Sym,Plane) where
 	gAct g (x,y) = (gAct g x, gAct g y)
+
 	
+-- == O aus dem Paper
 symplClass = toList $ gOrbit [SpR,SpJ,SpD] classP
+
 
 sumSpan = [ x++[if any (b==) (map (t^+^) ps) then 1 else 0 | b<-allVectors] | (Sym x,p)<-symplClass, 
 	let ps =(spanPlane p), t<-spanPlane (orthogonalPlane p) ]
@@ -133,4 +170,3 @@ instance GroupAction Sp Sym where
 		e = [gac $ Ext [if i==j then 1 else 0 | i<- [1..dimExt]]| j<-[1..dimExt]]
 		le = [ sym (e!!i)(e!!j) | i<-[0..dimExt-1],j<-[i..dimExt-1]]
 		f (Sym v) = foldr (^+^) zeroV $ zipWith (*^) v le
-
