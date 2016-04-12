@@ -100,13 +100,13 @@ toLong element = [case x of {Just (_,i) -> i::Coeff; _ ->0}| b<-allVectors, let 
 fromPlane p= [(t,1::Coeff)| t<-spanPlane p]
 
 generatesD = [
-	Plane(Vect[1,0,0,0],Vect[0,1,0,0]), 
-	Plane(Vect[1,0,0,0],Vect[0,1,0,1]), 
-	Plane(Vect[1,0,0,0],Vect[0,1,0,2]), 
-	Plane(Vect[1,0,0,0],Vect[0,1,1,1]), 
-	Plane(Vect[1,0,0,1],Vect[0,1,2,1]), 
-	Plane(Vect[1,0,1,1],Vect[0,1,0,1]), 
-	Plane(Vect[1,0,1,0],Vect[0,1,0,1]), 
+	Plane(Vect[1,0,0,0],Vect[0,1,0,0]), --  8
+	Plane(Vect[1,0,0,0],Vect[0,1,0,1]), -- +4
+	Plane(Vect[1,0,0,0],Vect[0,1,0,2]), -- +1
+	Plane(Vect[1,0,0,0],Vect[0,1,1,1]), -- +2
+	Plane(Vect[1,0,0,1],Vect[0,1,2,1]), -- +4
+	Plane(Vect[1,0,1,1],Vect[0,1,0,1]), -- +2
+	Plane(Vect[1,0,1,0],Vect[0,1,0,1]), -- +2
 	Plane(Vect[1,0,1,1],Vect[0,1,2,2]),
 	Plane(Vect[0,0,1,0],Vect[0,0,0,1]) 
 	]
@@ -116,6 +116,22 @@ maxIdeal =  [ [(v,1::Coeff)]+(-1)  | v<-tail allVectors]
 planeD = [ toLong $ a*m | a<-map fromPlane generatesD, m<-maxIdeal]
 writeD = writeFile "PlaneD.txt" $ showGapMat2 planeD
 
+
+generatesD' = [ x*([(v,1)]-1)| let p = Plane(Vect[1,0,0,0],Vect[0,1,0,0]), let pT = orthogonalPlane p, let x = fromPlane p, v<- tail $ spanPlane pT]
+	++ [  x*([(v,1)]-1) | let p= Plane(Vect[0,0,1,0],Vect[0,0,0,1]), let pT = orthogonalPlane p, let x = fromPlane p, v<- drop 2 $ spanPlane pT]
+	++ [  x*([(v,1)]-1) | let x= fromPlane$ Plane(Vect[1,0,0,0],Vect[0,1,0,1]), v<-map Vect [[0,0,0,1],[2,0,1,2],[1,0,2,0],[1,0,2,1] ] ]
+	++ [ fromPlane (Plane(Vect[1,0,0,0],Vect[0,1,0,2])) * ([(v,1)]-1) | let v = Vect [1,0,1,0] ]
+	++ [ fromPlane (Plane(Vect[1,0,0,0],Vect[0,1,1,1])) * ([(v,1)]-1) | v <- map Vect [[0,0,1,1],[1,0,0,1]] ]
+	++ [ fromPlane (Plane(Vect[1,0,0,1],Vect[0,1,2,1])) * ([(v,1)]-1) | v <- map Vect [[0,1,1,2],[1,0,0,2], [1,1,1,1], [2,2,2,2]] ]
+	++ [ fromPlane (Plane(Vect[1,0,1,1],Vect[0,1,0,1])) * ([(v,1)]-1) | v <- map Vect [[0,1,0,2],[1,0,2,2]] ]
+	++ [ fromPlane (Plane(Vect[1,0,1,0],Vect[0,1,0,1])) * ([(v,1)]-1) | v <- map Vect [[0,1,0,2],[1,0,2,0]] ]
+	++ [ fromPlane (Plane(Vect[1,0,1,1],Vect[0,1,2,2])) * ([(v,1)]-1) | v <- map Vect [[1,1,0,2]] ]
+
+planeD' = map toLong generatesD'
+writeD' = writeFile "PlaneD'.txt" $ showGapMat2 planeD'
+
+planeBig = [ toLong $ a*m | a<-map fromPlane allPlanes, m<-maxIdeal]
+writeBig = writeFile "PlaneBig.txt" $ showGapMat2 planeBig
 
 
 instance GroupAction Sp (Sym,Plane) where
