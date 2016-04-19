@@ -22,7 +22,13 @@ instance (Ord x,GroupAction g x) => GroupAction g (Set.Set x) where
 
 -- Orbit eines Elements x unter der Gruppe erzeugt von gen
 gOrbit gen x = run (Set.singleton x) where
-	run s = if s==ns then s else run ns where
+	run s = if Set.size s == Set.size ns then s else run ns where
+		ns = Set.unions $ s : [gAct g s | g <- gen]
+
+-- dynamischer Orbit; funktioniert auch, wenn der Orbit beliebig groß wird
+gDynOrbit gen x = x : run (Set.singleton x) where
+	run s = if Set.size s == Set.size ns then [] 
+		else Set.toList (ns Set.\\ s) ++ run ns where
 		ns = Set.unions $ s : [gAct g s | g <- gen]
 
 -- Orbits einer Menge von Elementen
@@ -38,7 +44,7 @@ gPath gen x y = run (Set.singleton $ Lab x []) where
 		ns = Set.unions $ s : [gAct g s | g <- gen]
 		in
 		if Set.member yy s then Just path else 
-		if  s==  ns then Nothing else run ns 
+		if Set.size s == Set.size ns then Nothing else run ns 
 
 data Labeled a i = Lab a i deriving Show
 instance (Eq a) => Eq (Labeled a i) where
