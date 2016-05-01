@@ -2,9 +2,17 @@ module Zeckendorf where
 
 import Data.MemoTrie
 import Data.List
+import System.IO.Unsafe
+import Data.IORef
 
--- Darstellung ganzer Zahlen mit Nega-Fibonaccis
-data Zeckendorf = Zecken {zahl::Integer, zeck::[Int]}
+-- Darstellung ganzer Zahlen mit (Nega-)Fibonaccis
+data Zeckendorf = Zecken {zahl::Integer, zeck::[Int]} deriving (Eq,Ord)
+
+
+{-# NOINLINE negaRef #-}
+negaRef :: IORef Bool
+negaRef = unsafePerformIO $ newIORef True
+nega _ = unsafePerformIO $ readIORef negaRef
 
 instance Show Zeckendorf where
 	show = show . zahl
@@ -16,6 +24,18 @@ instance Num Zeckendorf where
 	fromInteger = zecken 
 	signum = signum . zecken . zahl 
 	abs = abs . zecken . zahl
+	
+instance Real Zeckendorf where
+	toRational = toRational . zahl
+	
+instance Enum Zeckendorf where
+	fromEnum = fromEnum . zahl
+	toEnum = zecken . toInteger
+
+instance Integral Zeckendorf where
+	toInteger = zahl
+	divMod a b = (zecken x,zecken y) where (x,y) = divMod (zahl a) (zahl b)
+	quotRem a b = (zecken x,zecken y) where (x,y) = quotRem (zahl a) (zahl b)
 	
 fibonacci = memo f where
 	f :: Int -> Integer	
@@ -34,8 +54,13 @@ zecken = \ n -> Zecken n (z n) where
 	z 0 =  []
 	z n = is : z (n-fibonacci is) where
 		m = ceiling $ log (fromIntegral (abs n) * sqrt5) / logGoldenRatio
-		is = if odd m == (n>0) then  - m else 1 - m
+		is = if nega ()
+			then if odd m == (n>0) then  - m else 1 - m
+			else if fibonacci m > n then (m-1) else m
 	
 zeckenShift shift a = zecken $ sum $ map (fibonacci .( + shift )) $ zeck a
 
-fibProduct x y = zecken $ sum [ fibonacci (i+j) | i<-zeck x, j<-zeck y]
+infixl 8 +*
+
+-- Fibonacci Product
+(+*) x y = zecken $ sum [ fibonacci (i+j) | i<-zeck x, j<-zeck y]
