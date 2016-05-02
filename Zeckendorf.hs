@@ -11,7 +11,7 @@ data Zeckendorf = Zecken {zahl::Integer, zeck::[Int]} deriving (Eq,Ord)
 
 {-# NOINLINE negaRef #-}
 negaRef :: IORef Bool
-negaRef = unsafePerformIO $ newIORef True
+negaRef = unsafePerformIO $ newIORef False
 nega _ = unsafePerformIO $ readIORef negaRef
 
 instance Show Zeckendorf where
@@ -64,3 +64,11 @@ infixl 8 +*
 
 -- Fibonacci Product
 (+*) x y = zecken $ sum [ fibonacci (i+j) | i<-zeck x, j<-zeck y]
+
+-- Was ganz was lustiges
+istSpezialMod = let 
+	range = map zecken [1..100]
+	in \n s -> all ( \r -> zahl (zecken (n*s) +* r - r) `mod` n == 0) range
+
+spezialZahlenMod n = filter (istSpezialMod n)  [0..]
+
