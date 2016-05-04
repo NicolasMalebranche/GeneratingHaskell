@@ -2,6 +2,7 @@ module Zeckendorf where
 
 import Data.MemoTrie
 import Data.List
+import Data.List.Ordered
 import System.IO.Unsafe
 import Data.IORef
 
@@ -67,8 +68,15 @@ infixl 8 +*
 
 -- Was ganz was lustiges
 istSpezialMod = let 
-	range = map zecken [1..100]
+	range = map zecken [if nega() then -100 else 1 .. 100]
 	in \n s -> all ( \r -> zahl (zecken (n*s) +* r - r) `mod` n == 0) range
 
 spezialZahlenMod n = filter (istSpezialMod n)  [0..]
+
+spezialNRange s = (unten,oben) where
+	unten = if nega() then 1 else mun 2
+	oben = run unten
+	run n = if istSpezialMod n s then run (n+1) else n
+	mun n = if istSpezialMod n s then n else mun (n+1)
+	
 
