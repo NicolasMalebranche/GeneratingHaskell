@@ -137,6 +137,9 @@ writeBig = writeFile "PlaneBig.txt" $ showGapMat2 planeBig
 instance GroupAction Sp (Sym,Plane) where
 	gAct g (x,y) = (gAct g x, gAct g y)
 
+
+lustig = [l!!i | i<-[0..19],i/=15,i/=13,i/=17] ++ [l!!26,l!!40,l!!50] where l = gDynOrbit [SpR,SpJ,SpD]  classP
+writeLustig = writeFile "Lustig.txt" $ showGapMat2 lustig
 	
 -- == O aus dem Paper
 symplClass = toList $ gOrbit [SpR,SpJ,SpD] classP
@@ -170,7 +173,11 @@ instance GroupAction Sp Ext where
 		f (Ext v) = foldr (^+^) zeroV $ zipWith (*^) v le
 		
 dimSym = (dimExt*(dimExt+1)) `div` 2
-newtype Sym = Sym [Coeff] deriving (Show,Eq,Ord)
+newtype Sym = Sym [Coeff] deriving (Eq,Ord)
+instance Show Sym where
+	show (Sym s) = let 
+		r = ["u_1^2","u_1v_1","u_1w_1","u_1w_2","-u_1v_2","u_1u_2","v_1^2","v_1w_1","v_1w_2","-v_1v_2","v_1u_2","w_1^2","w_1w_2","-w_1v_2","w_1u_2","w_2^2","-w_2v_2","w_2u_2","v_2^2","-v_2u_2","u_2^2"]
+		in concat [case x of {0->""; 1->"+"++ (r!!i); 2->"-"++(r!!i)} | (x,i) <- zip s [0..]]
 instance AdditiveGroup Sym where
 	zeroV = Sym $ replicate dimSym 0
 	Sym a ^+^ Sym b = Sym $ zipWith (+) a b
