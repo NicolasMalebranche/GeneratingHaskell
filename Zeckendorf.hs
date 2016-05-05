@@ -23,8 +23,8 @@ instance Num Zeckendorf where
 	a-b = zecken $ zahl a - zahl b
 	a*b = zecken $ zahl a * zahl b
 	fromInteger = zecken 
-	signum = signum . zecken . zahl 
-	abs = abs . zecken . zahl
+	signum = zecken . signum . zahl 
+	abs = zecken . abs . zahl
 	
 instance Real Zeckendorf where
 	toRational = toRational . zahl
