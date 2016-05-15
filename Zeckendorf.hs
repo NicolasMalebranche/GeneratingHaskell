@@ -29,6 +29,10 @@ zahl z = (if zeckNeg z then negate else id) $ sum [fibonacci i | i <- zeck z]
 zeckApprox z = (if zeckNeg z then negate else id) $  
 	sum [ goldenRatio ** (fromIntegral i) | i <- zeck z ]
 
+zeckToPair z =  (zahl $ zeckenShift (-1) z, zahl z)
+zeckNorm z = a^2 + a*b - b^2 where
+	(a,b) = zeckToPair z
+
 zeckenShift shift (Zecken a n) = Zecken (map (shift +) a) n	
 
 zecken n = Zecken (reverse $ z $ abs n) (n < 0) where 
@@ -70,7 +74,7 @@ instance Num Zeckendorf where
 -- golden Ratio base
 zeckMult 0 = Zecken [] False
 zeckMult n = Zecken (zeck m) (n<0) where
-	s = ceiling $ log (fromIntegral (abs n) * sqrt5) / logGoldenRatio
+	s = ceiling $ log (fromIntegral (abs n) * sqrt5) / logGoldenRatio + 1
 	m = zeckenShift (-s) $ zecken $ abs n * fibonacci s
 	
 {-
