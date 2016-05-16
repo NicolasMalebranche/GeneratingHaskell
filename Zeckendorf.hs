@@ -3,6 +3,7 @@ module Zeckendorf where
 import Data.MemoTrie
 import Data.List
 import Data.List.Ordered
+import Data.Ratio
 
 fibonacci = generalFib 0 1
 	
@@ -29,9 +30,6 @@ zahl z = (if zeckNeg z then negate else id) $ sum [fibonacci i | i <- zeck z]
 zeckApprox z = (if zeckNeg z then negate else id) $  
 	sum [ goldenRatio ** (fromIntegral i) | i <- zeck z ]
 
-zeckToPair z =  (zahl $ zeckenShift (-1) z, zahl z)
-zeckNorm z = a^2 + a*b - b^2 where
-	(a,b) = zeckToPair z
 
 zeckenShift shift (Zecken a n) = Zecken (map (shift +) a) n	
 
@@ -77,6 +75,31 @@ zeckMult n = Zecken (zeck m) (n<0) where
 	s = ceiling $ log (fromIntegral (abs n) * sqrt5) / logGoldenRatio + 1
 	m = zeckenShift (-s) $ zecken $ abs n * fibonacci s
 	
+zeckMult1 = zeckenShift 1 . zeckMult
+
+zeckToPair z =  (zahl $ zeckenShift (-1) z, zahl z)
+
+zeckNorm z = a^2 + a*b - b^2 where
+	(a,b) = zeckToPair z
+
+zeckConj z = zeckMult (a+b) + zeckMult1 (-b) where 
+	(a,b) = zeckToPair z
+
+zeckQuotRem ab cd = let
+	n = zeckNorm cd
+	(a,b) = zeckToPair ab
+	(c,d) = zeckToPair cd 
+	(x,y) = (a*(c+d)-b*d, b*c-a*d)
+	(m,l) = (round $ x%n, round $ y%n)
+	q = zeckMult m + zeckMult1 l
+	in if abs (zeckNorm ab) < abs n then (0,ab) else (q,ab-cd*q)
+	
+instance Real Zeckendorf
+instance Enum Zeckendorf
+instance Integral Zeckendorf where
+	quotRem = zeckQuotRem
+	toInteger = fst . zeckToPair
+
 {-
 zeckMult n = Zecken (if n == 0 then [] else list) (n<0) where
 	t s = (zahl $ zeckenShift 1 $ zecken $ n*s) `mod` n == 0
