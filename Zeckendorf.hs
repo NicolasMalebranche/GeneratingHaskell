@@ -22,6 +22,10 @@ goldenRatio = (1+ sqrt 5) / 2 :: Double
 sqrt5 = sqrt 5
 logGoldenRatio = log goldenRatio
 
+-- Das Wythoff - Array
+wythoff n m = zahl $ zeckenShift m q where
+	q = zecken $ floor (fromIntegral n * goldenRatio^2) - 1
+
 -- Darstellung ganzer Zahlen mit (Nega-)Fibonaccis
 -- Die Liste muß aufsteigend sein
 data Zeckendorf = Zecken {zeck::[Int], zeckNeg:: Bool } deriving (Eq,Ord)
