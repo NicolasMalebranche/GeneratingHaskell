@@ -81,7 +81,7 @@ class (Eq a, HasTrie a) => Partition a where
 	partUnion :: a -> a -> a
 
 	-- partRank
-	-- partCrank
+	partCrank :: a -> Int
 
 -----------------------------------------------------------------------------------------
 
@@ -142,6 +142,10 @@ instance Partition PartitionAlpha where
 	partDominates a b = partDominates (partAsLambda a) (partAsLambda b)
 	partAdd = zipAlpha (+)
 	partUnion = zipAlpha max
+	partCrank (PartAlpha a) = if w== 0 then l else m-w where
+		w = if a ==[] then 0 else head a
+		l = last$ 0: [ n| (n,m)<- zip [1..] a, m > 0]
+		m = sum $ drop w a
 
 -- Alle Partitionen eines bestimmten Gewichts, aufsteigend sortiert
 partOfWeight :: Int -> [PartitionAlpha]
@@ -279,6 +283,10 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 			| otherwise = x : u l ym
 		u [] m = m
 		u l [] = l
+	partCrank (PartLambda lam) = if w== 0 then l else m-w where
+		l = if lam == [] then 0 else fromIntegral $ head lam
+		w = length $ filter (1==) lam
+		m = length $ filter (fromIntegral w < ) lam
 
 instance (Eq i, Num i) => Eq (PartitionLambda i) where
 	PartLambda p == PartLambda q = findEq p q where
