@@ -80,12 +80,20 @@ class (Eq a, HasTrie a) => Partition a where
 	-- Vereinigung zweier Partitionen
 	partUnion :: a -> a -> a
 
+	-- partRank
+	-- partCrank
 
 -----------------------------------------------------------------------------------------
 
 -- Datentyp für Partitionen in Alpha-Schreibeweise
 -- (Liste von Muliplizitäten)
 newtype PartitionAlpha = PartAlpha { alphList::[Int] }
+
+-- Smarter Constructor, schneidet die Nullen am Ende ab
+partAlpha = PartAlpha . pA [] where
+	pA n [] = []
+	pA n (0:r) = pA (0:n) r
+	pA n (x:r) = n ++ (x : pA [] r)
 
 -- Normales zipWith aber ohne Abschneiden bei unterschiedlicher Länge
 zipAlpha op (PartAlpha a) (PartAlpha b) = PartAlpha $ z a b where
