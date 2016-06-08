@@ -4,6 +4,12 @@ module DirichletSeries where
 import Data.List
 import Data.MemoTrie
 
+{- import PrimeFactors
+factorizations' n = f p [(1,1)] where
+        p = primeFactors (n::Integer)
+        f [] a = a
+        f ((q,m):r) a = f r [ (x* q^i, y* q^(m-i)) | (x,y) <- a, i <- [0..m]]
+-}
 
 data DirichletSeries a = Dirch {dirchCoeff :: Integer -> a} deriving Functor
 
