@@ -54,8 +54,11 @@ class (Eq a, HasTrie a) => Partition a where
 	-- (vorspringende) Ecken
 	partCorners :: a -> [(Int,Int)]
 
-	-- Dominiert das erste Argument das zweite? (Ergibt Partialordnung)
+	-- Dominanzordnung
+	-- Dominiert das erste Argument das zweite?
 	partDominates :: a -> a -> Bool
+	partJoin :: a -> a -> a
+	partMeet :: a -> a -> a
 
 	-- Nächste Partition
 	partSucc :: a -> a
@@ -89,14 +92,17 @@ class (Eq a, HasTrie a) => Partition a where
 -- (Liste von Muliplizitäten)
 newtype PartitionAlpha = PartAlpha { alphList::[Int] }
 
+
 -- Smarter Constructor, schneidet die Nullen am Ende ab
 partAlpha = PartAlpha . pA [] where
 	pA n [] = []
 	pA n (0:r) = pA (0:n) r
 	pA n (x:r) = n ++ (x : pA [] r)
 
+zipAlpha op (PartAlpha a) (PartAlpha b) = PartAlpha $ zipWith' op a b
+
 -- Normales zipWith aber ohne Abschneiden bei unterschiedlicher Länge
-zipAlpha op (PartAlpha a) (PartAlpha b) = PartAlpha $ z a b where
+zipWith' op = z where
 	z (x:a) (y:b) = op x y : z a b
 	z [] (y:b) = op 0 y : z [] b
 	z (x:a) [] = op x 0 : z a []
@@ -119,6 +125,7 @@ instance Partition PartitionAlpha where
 	partEmpty = PartAlpha []
 	partZ (PartAlpha l) = foldr (*) 1 $ zipWith (\a i -> factorial a * i^a) (map fromIntegral l) [1..] where
 		factorial n = if n==0 then 1 else n*factorial(n-1)
+	partConj = partAsAlpha . alphaConj	
 	partAsAlpha = id
 	partFromAlpha = id
 	partAsLambda (PartAlpha l) = PartLambda $ reverse $ f 1 l where
@@ -140,6 +147,8 @@ instance Partition PartitionAlpha where
 		pc _ _ acc [] = acc
 		pc i j acc (a:r) = if a>0 then pc (i-fromIntegral a) (j+1) ((i,j):acc) r else pc i (j+1) acc r
 	partDominates a b = partDominates (partAsLambda a) (partAsLambda b)
+	partJoin a b = partAsAlpha $ partMeet (partAsLambda a) (partAsLambda b)
+	partMeet a b = partAsAlpha $ partJoin (partAsLambda a) (partAsLambda b)
 	partAdd = zipAlpha (+)
 	partUnion = zipAlpha max
 	partCrank (PartAlpha a) = if w== 0 then l else m-w where
@@ -223,6 +232,9 @@ instance HasTrie PartitionAlpha where
 -- Partitionen in lambda-Schreibweise
 newtype PartitionLambda i = PartLambda { lamList :: [i] }
 
+-- Smarter Konstruktor, schneidet Nullen ab
+partLambda l = PartLambda $ takeWhile (0<) l
+
 lambdaToAlpha :: Integral i => PartitionLambda i -> PartitionAlpha
 lambdaToAlpha (PartLambda []) = PartAlpha[] 
 lambdaToAlpha (PartLambda (s:p)) = lta 1 s p [] where
@@ -271,6 +283,11 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 		check s (a:l)(b:m) = ss >= 0 && check ss l m where ss = s+a-b
 		check s [] m = s >= sum m 		
 		check _ _ [] = True
+	partMeet (PartLambda l) (PartLambda l') = partLambda $ zipWith (-) (tail s) s where
+		a = scanl (+) 0 $ l ++ repeat 0
+		b = scanl (+) 0 $ l' ++ repeat 0
+		s = zipWith min a b
+	partJoin a b = partConj $ partMeet (partConj a) (partConj b) 
 	partAdd (PartLambda l) (PartLambda m) = PartLambda $ a l m where
 		a xl@(x:l) ym@(y:m) | x==y = x : y : a l m
 			| x < y = y : a xl m
@@ -310,3 +327,13 @@ instance HasTrie i => HasTrie (PartitionLambda i) where
 	trie f = TrieTypeL $ trie $ f . PartLambda
 	untrie f =  untrie (unTrieTypeL f) . lamList
 	enumerate f  = map (\(a,b) -> (PartLambda a,b)) $ enumerate (unTrieTypeL f)
+
+-----------------------------------------------------------------------------------------
+
+-- Konjugation von Partitionen ist dann besonders leicht, wenn die Darstellungen gewechselt werden
+
+lambdaConj (PartLambda l) = PartAlpha $ zipWith (-) ll (tail ll ++ [0]) where
+	ll = map fromIntegral l
+
+alphaConj (PartAlpha a) = PartLambda $ init $ scanr (+) 0 a
+
