@@ -44,6 +44,22 @@ instance ModP Mod7 where
 	con = Mod7
 	decon (Mod7 i) = i
 
+data Mod11
+newtype instance F Mod11 = Mod11 Int8
+instance ModP Mod11 where
+	type ModStore Mod11 = Int8
+	p _ = 11
+	con = Mod11
+	decon (Mod11 i) = i
+
+data Mod13
+newtype instance F Mod13 = Mod13 Int8
+instance ModP Mod13 where
+	type ModStore Mod13 = Int8
+	p _ = 13
+	con = Mod13
+	decon (Mod13 i) = i
+
 -- Fuer p > 2^14 sollte man seine Zahlen nicht
 -- mehr als Int speichern, sondern z. B. als Integer
 data Mod23879539
