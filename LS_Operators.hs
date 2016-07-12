@@ -169,4 +169,8 @@ cT = (!!) c where
 	cc k = [ (ChT (2*i):o, x*fact(2*i)/fromIntegral(-k) ) | i<-[1..div k 2], (o,x) <- cT (k-2*i) ]
 	fact n = fromIntegral $ product [1..n]
 
+-- Unit element
+one n = foldr add (Vak []) [scale (a*fac) $ nakaState [P(-1) k | _ <- [1..n]] | (k,a) <- gfa_1 ] where
+	fac = recip $ fromIntegral $ product [1..n]
+
 
