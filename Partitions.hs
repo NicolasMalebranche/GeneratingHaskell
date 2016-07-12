@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeOperators, TypeFamilies #-}
+{-# LANGUAGE TypeOperators, TypeFamilies, MultiParamTypeClasses, 
+	FunctionalDependencies, FlexibleInstances #-}
 
 module Partitions where
 
@@ -60,7 +61,7 @@ class (Eq a, HasTrie a) => Partition a where
 	partJoin :: a -> a -> a
 	partMeet :: a -> a -> a
 
-	-- Nächste Partition
+	-- Nächste Partitiond
 	partSucc :: a -> a
 	
 	-- Leere Partition
@@ -80,8 +81,13 @@ class (Eq a, HasTrie a) => Partition a where
 	
 	-- Summe zweier Partitionen
 	partAdd :: a -> a -> a
+
+	-- Young's Partialordnung
+	partContains :: a -> a -> Bool	
 	-- Vereinigung zweier Partitionen
 	partUnion :: a -> a -> a
+	-- Schnitt zweier Partitionen
+	partIntersection :: a -> a -> a
 
 	-- partRank
 	partCrank :: a -> Int
@@ -150,7 +156,11 @@ instance Partition PartitionAlpha where
 	partJoin a b = partAsAlpha $ partMeet (partAsLambda a) (partAsLambda b)
 	partMeet a b = partAsAlpha $ partJoin (partAsLambda a) (partAsLambda b)
 	partAdd = zipAlpha (+)
-	partUnion = zipAlpha max
+	partContains (PartAlpha a) (PartAlpha b) = pc a b where
+		pc _ [] = True
+		pc [] b = all (0==) b
+		pc (x:r)(y:p) = if x>=y then pc r p else pc r (y-x+a:q) where (a:q) =p++[0]
+	--partUnion = zipAlpha max
 	partCrank (PartAlpha a) = if w== 0 then l else m-w where
 		w = if a ==[] then 0 else head a
 		l = last$ 0: [ n| (n,m)<- zip [1..] a, m > 0]
@@ -294,12 +304,9 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 			| otherwise = x : a l ym
 		a [] m = m
 		a l [] = l
-	partUnion (PartLambda l) (PartLambda m) = PartLambda $ u l m where
-		u xl@(x:l) ym@(y:m) | x==y = x : u l m
-			| x < y = y : u xl m
-			| otherwise = x : u l ym
-		u [] m = m
-		u l [] = l
+	partContains (PartLambda l) (PartLambda m) = all id $ zipWith' (>=) l m
+	partUnion (PartLambda l) (PartLambda m) = PartLambda $ zipWith' max l m
+	partIntersection (PartLambda l) (PartLambda m) = PartLambda $ zipWith min l m
 	partCrank (PartLambda lam) = if w== 0 then l else m-w where
 		l = if lam == [] then 0 else fromIntegral $ head lam
 		w = length $ filter (1==) lam
@@ -336,4 +343,17 @@ lambdaConj (PartLambda l) = PartAlpha $ zipWith (-) ll (tail ll ++ [0]) where
 	ll = map fromIntegral l
 
 alphaConj (PartAlpha a) = PartLambda $ init $ scanr (+) 0 a
+
+forkDual :: (OtherRepresentation a b, OtherRepresentation b a) =>
+	(a -> a -> a) -> b -> b -> b
+forkDual op a b = otherConj $ op (otherConj a) (otherConj b)
+
+class (Partition a, Partition b) => OtherRepresentation a b | a->b  where
+	otherConj :: a -> b
+
+instance OtherRepresentation PartitionAlpha (PartitionLambda Int) where
+	otherConj a = alphaConj a
+
+instance OtherRepresentation (PartitionLambda Int) PartitionAlpha where
+	otherConj l = lambdaConj l
 
