@@ -41,7 +41,6 @@ actsOn (L _ _) = NakaState
 actsOn (Ch _ _) = DelState
 actsOn (GV _ _) = DelState
 actsOn (ChT _) = DelState
-actsOn (J 0 1 _) = Both
 actsOn (J _ _ _) = NakaState
 
 actOnNakaVac p@(P n _) = Vak $ if n<0 then [([p],1)] else []
@@ -49,15 +48,16 @@ actOnNakaVac (L n k) = Vak $ sparseNub [(o,y*x/2) |
 	nu <- [n+1 .. -1], ((a,b),x) <- gfa_comult k, (o,y) <-unVak$nakaState $op nu a b ] where
 	op nu a b = if n-nu > 0 then [P nu a, P (n-nu) b] else [P (n-nu) a, P nu b]
 actOnNakaVac Del = Vak []
-actOnNakaVac (J p n a) = Vak $ scal (fromIntegral $ fact p) $ first ++ second  where
+actOnNakaVac (J p n a) = toNaka $ Vak $ scal (fromIntegral $ fact p) $ first ++ second  where
 	fact n = if n == 0 then 1 else n*fact(n-1)
 	s (PartAlpha a) = sum [ i^2*m | (i,m) <- zip [1..] a]
 	pFact (PartAlpha a) = fromIntegral $ product $ map fact a
-	creation al b =  [ (qL (partAsLambda al) ai, x) | (ai,x) <- tau ] where
+	creation al b =  [ (qL (partAsLambda al) ai, x*(-1)^(partLength al +1)) | (ai,x) <- tau ] where
 		tau = gfa_comultN (partLength al - 1) b
 		qL (PartLambda l) aa = [ P (-i) ai | (i,ai) <- zip l aa]
 	first = [ (o,-x/pFact al) | al <- partOfWeightLength (-n) (p+1), (o,x) <- creation al a]
-	second =[ (o,x*fromIntegral (s al +n^2-2)/24/pFact al) | al <- partOfWeightLength (-n) (p-1), (o,x) <- creation al a]
+	second =[ (o,-x*y*fromIntegral (s al +n^2-2)/24/pFact al) | al <- partOfWeightLength (-n) (p-1), 
+		(b,y) <- gfa_euler_mult a, (o,x) <- creation al b]
 
 actOnDelVac p@(P n k) = Vak $ if n >= 0 then [] else scal ( 1/ fac) $ rec n where
 	fac = fromIntegral $ product [n+1 .. -1] 
@@ -68,6 +68,13 @@ actOnDelVac Del = Vak  []
 actOnDelVac (Ch _ _) = Vak  []
 actOnDelVac (GV _ _) = Vak  []
 actOnDelVac (ChT _) = Vak []
+
+actOnJVac j@(J p n a) = if n>=0 || p > -n+1 || p> -n-1 && length (gfa_euler_mult a) ==0 then Vak [] else
+	Vak [([j],1)]
+actOnJVac (P n a) = if n<0 then Vak [([J 0 n a],-1)] else Vak []
+actOnJVac (L n a) = if n< -1 then Vak [([J 1 n a],1)] else Vak []
+actOnJVac _ = Vak []
+ 
 
 -- ad(Del)^n(op)/n!
 facDiff n op = let 
@@ -111,8 +118,6 @@ commutator (ChT n) p@(P (-1) y) =  sparseNub $ first ++ second ++ third ++ fourt
 	fourth = [ ( o++[Ch gn b2], x*xx*z*(-1)^nu) | k <- [0..2] , (a,x) <- expTodd_y!!k, ((b1,b2),xx) <- gfa_comult a, 
 		nu <- [0..n-k-2], let gn = n-nu-k-2, (o,z) <- facDiff nu (P (-1) b1) ]
 	fifth = if n==2 then [ ([P(-1) b], x*xx) | (a,x) <- gfa_euler, (b,xx) <- gfa_mult a y] else []
-commutator (J 0 m a) (J 1 n b) = [ ([J 0 (m+n) ab], - x *fromIntegral n) | (ab,x) <- gfa_mult a b]
-commutator (J 2 m a) (J 0 n b) = [ ([J 1 (m+n) ab], -2* x *fromIntegral n) | (ab,x) <- gfa_mult a b]
 commutator (J p m a) (J q n b) = first ++ second where
 	mul =  gfa_mult a b
 	qmpn 0 0 = if m+n==0 then fromIntegral m else 0
@@ -126,7 +131,14 @@ commutator (J p m a) (J q n b) = first ++ second where
 		| p < -1 = []
 		| otherwise = [([J p m a], 1)]
 	first = [ (o, qmpn p q *x*t) | (ab,x) <-mul , (o,t) <- j (p+q-1) (m+n) ab ]
-	second = [ (o,x*z*y*t*om) | (ab,x) <- mul, (e,z) <- gfa_euler, (c,y) <- gfa_mult e ab, (o,t) <- j (p+q-3) (m+n) c]
+	second = [ (o,-x*y*t*om) | (ab,x) <- mul, (c,y) <- gfa_euler_mult ab, (o,t) <- j (p+q-3) (m+n) c]
+commutator (J 0 m a) (P n b) = scal (-1) $ commutator (P m a) (P n b) 
+commutator j@(J _ _ _) (P n a) = scal (-1) $ commutator j (J 0 n a)
+commutator (P n a) j@(J _ _ _) = scal (-1) $ commutator (J 0 n a) j
+commutator (L n a) j@(J _ _ _)  = scal (-1) $ commutator (J 1 n a) j
+-- Das nächste funktioniert nur, falls gfa_K = []
+commutator Del j@(J p n a) = [ (o,x*y/2) | (b,x) <- gfa_1, (o,y)<- commutator (J 2 0 b) j]
+commutator (Ch p a) j@(J _ _ _) = scal (1/fromIntegral (product [1..p+1])) $ commutator (J (p+1) 0 a) j 
 
 omm p q m n = m*p^3*n^2 + 3*m*p^2*n^2*q - p^2*n*q + p^2*q*n^3 - 3*m*p^2*n^2 + p*n*q  + 
 	3*m^2*p*n*q - 3*m*p*n^2*q - m^3*q^2*p - p*q*n^3 - m*p*q + m^3*p*q + 
@@ -191,20 +203,19 @@ nakaState (o:r) = if actsOn o == DelState then toNaka $ delState (o:r) else resu
 		sign= if odd (degree p) && odd (degree o) then -1 else 1
 
 -- Operator product acting on Vacuum. Result is given in terms of J operators.
+-- Assuming that the canonical bundle is trivial.
 jState :: (GradedFrobeniusAlgebra k, Ord k) => [VertexOperator k] -> State Rational k
 jState [] = Vak [([],1)]
 jState (o:r) = result where
-	result = Vak $ sparseNub[ (q,x*y) | (s,x) <-unVak$ jState r, (q,y) <- unVak $ commuteIn s]
-	commuteIn [] = actOnDelVac o
-	commuteIn (pd:r) = case (o,pd) of 
-		(Del,_) -> Vak [ (Del:pd:r,1) ]
-		(P (-1) _, Del) -> Vak [ (o:pd:r,1) ]
-		(P (-1) a, P (-1) b) -> if a <= b then Vak [(o:pd:r,1)] else Vak cI
+	result = Vak $ sparseNub[ (q,x*y) | (s,x) <- unVak $ jState r, (q,y) <- unVak $ commuteIn s]
+	commuteIn [] = actOnJVac o
+	commuteIn (pd:r) = case (o,pd) of
+		(J p m a, J q n b) -> if (p+m,p-m)<(q+n,q-n) then Vak [(o:pd:r,1)] else Vak cI 
 		_ -> Vak cI
 		where
 		cI = case comm of [] -> ted; _ -> sparseNub $ ted ++ comm
 		ted = [(pd:q,x*sign) | (q,x) <- unVak $ commuteIn r]
-		comm =  [ (ds,x*y) | (q,x) <- commutator o pd, (ds,y) <- unVak $ delState (q++r) ]
+		comm =  [ (ds,x*y) | (q,x) <- commutator o pd, (ds,y) <- unVak $ jState (q++r) ]
 		sign= if odd (degree pd) && odd (degree o) then -1 else 1
 
 -- Transforms state representations
