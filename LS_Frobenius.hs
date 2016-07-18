@@ -20,6 +20,9 @@ class (Ix k,Ord k)=> GradedFrobeniusAlgebra k where
 	gfa_bilinear :: Num a => k -> k -> a
 	gfa_bilinear i j = sum [ gfa_T k * x | (k,x) <- gfa_mult i j ]
 	gfa_bilinearInverse :: Num a => k -> [(k, a)]
+	gfa_euler :: Num a => [(k,a)]
+	gfa_euler = [(k,fromIntegral x) | (k,x)<-e] where 
+		e = sparseNub [ (k,y*x*v) | (u,v) <- gfa_1, (ij,x) <- gfa_comult u, (k,y) <- uncurry gfa_mult ij] 
 
 -- Tensor product
 instance (GradedFrobeniusAlgebra k, GradedFrobeniusAlgebra k') => GradedFrobeniusAlgebra (k,k') where
@@ -69,9 +72,9 @@ gfa_comultN n a = let
 	rec = gfa_comultN (n-1) a
 	in sparseNub [ (c:d:r, x*y) | (b:r,x) <- rec, ((c,d),y) <- gfa_comult b]
 
-gfa_euler :: (GradedFrobeniusAlgebra k, Ix k, Num a) => [(k,a)]
-gfa_euler = [(k,fromIntegral x) | (k,x)<-e] where 
-	e = sparseNub [ (k,y*x*v) | (u,v) <- gfa_1, (ij,x) <- gfa_comult u, (k,y) <- uncurry gfa_mult ij] 
+gfa_euler_mult a = sparseNub [ (c,x*y)| (b,x) <- gfa_euler, (c,y) <- gfa_mult a b]
+
+gfa_K_mult a = sparseNub [ (c,x*y)| (b,x) <- gfa_K, (c,y) <- gfa_mult a b]
 
 sparseNub [] = []
 sparseNub l = sn (head sl) (tail sl) where
@@ -110,6 +113,7 @@ instance GradedFrobeniusAlgebra K3Domain where
 	gfa_mult (K3 i) (K3 j) =  [(23, fromIntegral $ bilK3_func i j)]
 	
 	gfa_bilinearInverse (K3 i) = [(K3 j,fromIntegral x) | j<-[0..23], let x =bilK3inv_func i j, x/=0]
+	gfa_euler = [(K3 23, -24)]	
 
 delta i j = if i==j then 1 else 0
 
@@ -224,6 +228,7 @@ instance GradedFrobeniusAlgebra TorusDomain where
 	gfa_mult i j = if k<0 then [] else [(k,fromIntegral x)] where (k,x)= torusMultArray!(i,j)
 	
 	gfa_bilinearInverse i = [(15-i,gfa_bilinear i (15-i))]
+	gfa_euler = []
 
 torusMultArray = listArray ((0,0),(15,15)) mults where  
 	toLists = listArray (0,15) list
