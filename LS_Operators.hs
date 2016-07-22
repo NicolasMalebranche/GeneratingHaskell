@@ -118,6 +118,42 @@ commutator (ChT n) p@(P (-1) y) =  sparseNub $ first ++ second ++ third ++ fourt
 	fourth = [ ( o++[Ch gn b2], x*xx*z*(-1)^nu) | k <- [0..2] , (a,x) <- expTodd_y!!k, ((b1,b2),xx) <- gfa_comult a, 
 		nu <- [0..n-k-2], let gn = n-nu-k-2, (o,z) <- facDiff nu (P (-1) b1) ]
 	fifth = if n==2 then [ ([P(-1) b], x*xx) | (a,x) <- gfa_euler, (b,xx) <- gfa_mult a y] else []
+-- experimental: J Operatoren. Funktionieren nur im Fall gfa_K == 0.
+commutator (ChT _) (J _ 0 _) = []
+{-
+commutator (ChT n) (J 0 (-1) y) = sparseNub $ first ++ second ++ third ++ fourth ++ fifth where
+	todd_Inv_y = [[(y,1)], [],  
+		sparseNub [(b,xx/12) |  (b,xx) <- gfa_euler_mult y]]
+	exp_K_y = [[(y,1)], [ ] ,[ ] ]
+	expTodd_y = todd_Inv_y
+	fact = fromIntegral.f where f n = if n ==0 then 1 else n*f(n-1)
+	first = [ ([J n (-1) y] ,1/fact n) ]
+	second = [ ( [J nu (-1) b1 , J (gn+1) 0 b2], x*xx*(-1)^(gn)/fact nu/fact(gn+1)) | k <- [0..2] , (a,x) <- todd_Inv_y!!k, ((b1,b2),xx) <- gfa_comult a, 
+		nu <- [0..n-k-2], let gn = n-nu-k-2 ]
+	third = [ ([J nu (-1) a],x*(-1)^nu/fact nu) | nu<-[max (n-2) 0..n], 
+		(a,x) <- exp_K_y !! (n-nu) ]
+	fourth = [ ( [J nu (-1) b1,J (gn+1) 0 b2], x*xx*(-1)^nu/fact(gn+1)/fact nu) | k <- [0..2] , (a,x) <- expTodd_y!!k, ((b1,b2),xx) <- gfa_comult a, 
+		nu <- [0..n-k-2], let gn = n-nu-k-2 ]
+	fifth = if n==2 then [ ([J 0 (-1) a], x) | (a,x) <- gfa_euler_mult y ] else []
+-}
+commutator (ChT n) (J 0 (-1) y) = if odd n then [] else first ++ second ++ third where
+	fact = fromIntegral.f where f n = if n ==0 then 1 else n*f(n-1)
+	first = [ ([J n (-1) y], 2/fact n) ]
+	second = [ ([J nu (-1) b1, J (l+1) 0 b2], 2*x*(-1)^nu/fact (l+1)/fact nu ) | ((b1,b2),x) <-gfa_comult y, nu<-[0..n-2], let l= n-2-nu] 
+		++[ ([J k (-1) b1, J (l+1) 0 b2], x*y*(-1)^k/fact (l+1)/fact k/6 ) | (ea,y) <- gfa_euler_mult y,((b1,b2),x) <-gfa_comult ea, k<-[0..n-4], let l= n-4-k]
+	third = if n == 2 then [([J 0 (-1) ae], x) | (ae,x) <- gfa_euler_mult y] else []
+commutator ch@(ChT _) (J p n a) = let
+	rec = commutator ch (J 0 (n+1) a)
+	one = scal (1/2) [(o,x*y*z) | (e1,z) <-gfa_1, (e2,y) <-gfa_1, (o,x) <-comRight ( comRight  (commutator ch (J 0 (-1) e1)) (J 2 0 e2) ) (J 0 (n+1) a) ]
+	two = [(o,x*y) | (e,x) <- gfa_1, (o,y) <- comRight rec (J 1 (-1) e) ]
+	comRight l o = [(s,x*y) | (r,x) <- l, (s,y) <- cr r ] where 
+		cr [] = []
+		cr [p] = commutator p o
+		cr [p,q] = [(p:t,x) |(t,x) <-commutator q o] ++  [(t++[q],x) |(t,x) <-commutator p o]
+	in if n>= -1 then undefined else 
+	if p== 0 then scal (1/fromIntegral (n+1)) $ sparseNub$ one ++ two 
+	else [ (o, x*xx/fromIntegral(n*p+n)) | (b,xx) <-gfa_1 , (o,x) <- comRight ( commutator ch (J 0 n a) ) (J (p+1) 0 b)]
+
 commutator (J p m a) (J q n b) = first ++ second where
 	mul =  gfa_mult a b
 	qmpn 0 0 = if m+n==0 then fromIntegral m else 0
@@ -136,14 +172,9 @@ commutator (J 0 m a) (P n b) = scal (-1) $ commutator (P m a) (P n b)
 commutator j@(J _ _ _) (P n a) = scal (-1) $ commutator j (J 0 n a)
 commutator (P n a) j@(J _ _ _) = scal (-1) $ commutator (J 0 n a) j
 commutator (L n a) j@(J _ _ _)  = scal (-1) $ commutator (J 1 n a) j
--- Das nächste funktioniert nur, falls gfa_K = []
 commutator Del j@(J p n a) = [ (o,x*y/2) | (b,x) <- gfa_1, (o,y)<- commutator (J 2 0 b) j]
 commutator (Ch p a) j@(J _ _ _) = scal (1/fromIntegral (product [1..p+1])) $ commutator (J (p+1) 0 a) j 
-
-omm p q m n = m*p^3*n^2 + 3*m*p^2*n^2*q - p^2*n*q + p^2*q*n^3 - 3*m*p^2*n^2 + p*n*q  + 
-	3*m^2*p*n*q - 3*m*p*n^2*q - m^3*q^2*p - p*q*n^3 - m*p*q + m^3*p*q + 
-	m*p*q^2 + 2*m*p*n^2 - 3*m^2*p*n*q^2 - 2*m^2*n*q + 3*m^2*n*q^2 -m^2*n*q^3
-omega p q m n = p*(p-1)*(q*(n^3-n)+(p+3*q-2)*m*n^2) - q*(q-1)*(p*(m^3-m)+(q+3*p-2)*m^2*n)		
+		
 
 showOperatorList [] = "|0>"
 showOperatorList (Del:r) = "D " ++ showOperatorList r
