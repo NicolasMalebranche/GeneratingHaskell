@@ -150,7 +150,7 @@ commutator ch@(ChT _) (J p n a) = let
 		cr [] = []
 		cr [p] = commutator p o
 		cr [p,q] = [(p:t,x) |(t,x) <-commutator q o] ++  [(t++[q],x) |(t,x) <-commutator p o]
-	in if n>= -1 then undefined else 
+	in if n>0 then undefined else if n==0 then [] else
 	if p== 0 then scal (1/fromIntegral (n+1)) $ sparseNub$ one ++ two 
 	else [ (o, x*xx/fromIntegral(n*p+n)) | (b,xx) <-gfa_1 , (o,x) <- comRight ( commutator ch (J 0 n a) ) (J (p+1) 0 b)]
 
@@ -241,7 +241,7 @@ jState (o:r) = result where
 	result = Vak $ sparseNub[ (q,x*y) | (s,x) <- unVak $ jState r, (q,y) <- unVak $ commuteIn s]
 	commuteIn [] = actOnJVac o
 	commuteIn (pd:r) = case (o,pd) of
-		(J p m a, J q n b) -> if (p+m,p-m)<(q+n,q-n) then Vak [(o:pd:r,1)] else Vak cI 
+		(J p m a, J q n b) -> if (p+m,m-p,a)<(q+n,n-q,b) then Vak [(o:pd:r,1)] else Vak cI 
 		_ -> Vak cI
 		where
 		cI = case comm of [] -> ted; _ -> sparseNub $ ted ++ comm
