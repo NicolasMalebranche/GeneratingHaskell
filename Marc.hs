@@ -1,8 +1,9 @@
 import LS_Operators
 import LS_Frobenius
 import Data.Ratio
+import PowerSeries
 
-kah = K3 2
+kah = K3 7
 [(_,kah2)] = gfa_mult kah kah
 nk op n k = let
 	Vak sta = jState $ replicate (2*k) (Ch 0 kah) ++ replicate n (J 0 (-1) 0)
@@ -28,3 +29,12 @@ zahl n k =  kah2 ^(n-k) *2*(-4)^k * (z%nen) where
 	z = product [1,3..2*n-2*k-1] * product [1,3..2*k+1] *product [1,3..2*k-3] * ((k+1)^2 +(n-k)*(2*k-1))
 	nen = product [1..k]*product[1..k+1]*product[1..2*k]
 pro n k = scale (1/product [1..fromIntegral n]) $ toNaka $ jState $ ChT (2*k) : replicate (2*n-2*k) (Ch 0 kah) ++ replicate n (P (-1) 0)
+
+-- Ellingsrud - Göttsche - Lehn
+eglH psi phi = seriesGenerating $ map f [0..] where
+	f n = case toNaka $ mul n of 
+		Vak [] -> 0
+		Vak [(_,x) ] -> x*(-1)^n  
+	mul n = toJ $ Vak [ (o++o'++a,x*x'*y) | k <- [0..2*n] , (o,x) <- psi k, (o',x') <- phi (2*n-k), (a,y) <- unVak $ one n ]
+
+
