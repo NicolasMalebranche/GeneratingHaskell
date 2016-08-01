@@ -160,7 +160,8 @@ instance Partition PartitionAlpha where
 		pc _ [] = True
 		pc [] b = all (0==) b
 		pc (x:r)(y:p) = if x>=y then pc r p else pc r (y-x+a:q) where (a:q) =p++[0]
-	--partUnion = zipAlpha max
+	partUnion a b = partFromLambda $ partUnion (partAsLambda a) $ partAsLambda b
+	partIntersection a b = partFromLambda $ partIntersection (partAsLambda a) $ partAsLambda b
 	partCrank (PartAlpha a) = if w== 0 then l else m-w where
 		w = if a ==[] then 0 else head a
 		l = last$ 0: [ n| (n,m)<- zip [1..] a, m > 0]
