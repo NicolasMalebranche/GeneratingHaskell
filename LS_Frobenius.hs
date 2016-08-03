@@ -198,6 +198,21 @@ instance GradedFrobeniusAlgebra P2Domain where
 
 	gfa_bilinearInverse i =  [(2-i, 1)]
 
+newtype SimpleDomain = Sim Int deriving (Show,Eq,Ord,Ix,Num)
+instance GradedFrobeniusAlgebra SimpleDomain where
+	gfa_deg (Sim 0 ) = -2
+	gfa_deg (Sim 1) = 2
+	gfa_1 = [(Sim 0,1)]
+	gfa_K = []
+	gfa_T (Sim 1) = -1
+	gfa_T _ = 0
+	gfa_base = [0,1]
+	gfa_baseOfDeg 2 = [1]
+	gfa_baseOfDeg (-2) = [0]
+	gfa_baseOfDeg _ = []
+	gfa_mult (Sim i) (Sim j) = if i+j == 1 && abs (i-j) == 1 then [(1,1)] else []
+	gfa_bilinearInverse (Sim i) = [(Sim $ 1-i,1)]
+
 
 -- Cohomology of complex torus
 newtype TorusDomain = Tor Int deriving (Enum,Eq,Num,Ord,Ix)

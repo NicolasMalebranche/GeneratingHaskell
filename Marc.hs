@@ -37,4 +37,13 @@ eglH psi phi = seriesGenerating $ map f [0..] where
 		Vak [(_,x) ] -> x*(-1)^n  
 	mul n = toJ $ Vak [ (o++o'++a,x*x'*y) | k <- [0..2*n] , (o,x) <- psi k, (o',x') <- phi (2*n-k), (a,y) <- unVak $ one n ]
 
+eglCh = eglH psi phi where
+	psi n = [(replicate n (Del :: VertexOperator K3Domain),1)] 
+	phi = cT
+
+-- Rekursiv für Chernklassen
+cc c = (!!) list where
+	list = nakaState [] : map f list 
+	f (Vak s) = toNaka$ toJ $Vak [ (t++[Ch 0 kah, Ch 0 kah, P(-1) 0] ++ o , x*y)| (o,x) <- s, (t,y) <- c]
+
 
