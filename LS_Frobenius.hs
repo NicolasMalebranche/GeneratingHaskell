@@ -210,7 +210,9 @@ instance GradedFrobeniusAlgebra SimpleDomain where
 	gfa_baseOfDeg 2 = [1]
 	gfa_baseOfDeg (-2) = [0]
 	gfa_baseOfDeg _ = []
-	gfa_mult (Sim i) (Sim j) = if i+j == 1 && abs (i-j) == 1 then [(1,1)] else []
+	gfa_mult (Sim 0) (Sim i) = [(Sim i,1)]
+	gfa_mult (Sim i) (Sim 0) = [(Sim i,1)]
+	gfa_mult _ _ = []
 	gfa_bilinearInverse (Sim i) = [(Sim $ 1-i,1)]
 
 
