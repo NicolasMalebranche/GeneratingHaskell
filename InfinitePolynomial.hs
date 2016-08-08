@@ -10,15 +10,19 @@ listClean p = psrf where
 
 -- Datenstruktur. Wird gespeichert als Sparse-Liste
 newtype InfinitePolynomial p a = InfPol {list::[(p,a)]}
+infPol l = InfPol $ listClean l
+x_ a = InfPol [(PartAlpha a,1::Rational)]
 
 instance (Num a,Eq a, Partition p,Ord p) => Num (InfinitePolynomial p a) where
 	fromInteger 0 = InfPol []
 	fromInteger i = InfPol [(partEmpty,fromInteger i)]
-	(InfPol a) + (InfPol b) = InfPol $ listClean $ a++b
-	(InfPol a) * (InfPol b) = InfPol $ listClean [(partAdd p q, x*y)|(p,x)<-a,(q,y)<-b]
+	(InfPol a) + (InfPol b) = infPol $ a++b
+	(InfPol a) * (InfPol b) = infPol [(partAdd p q, x*y)|(p,x)<-a,(q,y)<-b]
 	negate (InfPol x) = InfPol $ map (\(p,a) -> (p,negate a)) x
 	abs (InfPol x) = InfPol $ map (\(p,a) -> (p,abs a)) x
 	signum (InfPol x) = InfPol $ map (\(p,a) -> (p,signum a)) x
+
+infPolScale x (InfPol f) = InfPol [ (o,y*x) | (o,y) <- f]
 
 instance (Num a, Eq a, Ord p) => Eq (InfinitePolynomial p a) where
 	(InfPol a) == (InfPol b) = listClean a == listClean b
