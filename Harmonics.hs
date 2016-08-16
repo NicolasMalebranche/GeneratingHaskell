@@ -2,6 +2,7 @@ module Harmonics where
 
 import InfinitePolynomial
 import Partitions
+import Data.Ratio
 
 laplace (InfPol f) = infPol [ (PartAlpha b, x*y)| (PartAlpha a , x ) <- f, (b,y) <- l a] where
 	l [] = []
@@ -25,3 +26,10 @@ decomp dim deg f = harmPr dim deg f : decomp dim (deg-2) ff where
 	r = radSq dim
 	rec j a f = if 2*j> n then 0 else 
 		infPolScale a f + r * rec (j+1) (a/4/(j+1)/(2-n-d/2+j)) (laplace f) 
+
+demon l = [ foldr lcm 1 $ map (denominator.snd) t | InfPol t <- x] where
+	x = decomp (length l) (sum l) $ x_ l
+
+denorm l = map (norm. (^2)) $ decomp (length l) (sum l) $ x_ l where
+	norm (InfPol t) = sum [a*n o| (o,a) <-t]
+	n (PartAlpha r) = fromIntegral $ product [if odd i then 0 else product [1,3..i-1] | i<-r] 
