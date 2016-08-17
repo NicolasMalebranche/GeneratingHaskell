@@ -2,6 +2,8 @@
 module PowerSeries where
 
 import Data.List
+import Data.Ratio
+import ScalQ
 
 infixl 5 °
 class Composeable a b c | a b -> c where
@@ -9,6 +11,9 @@ class Composeable a b c | a b -> c where
 
 data PowerSeries a = Elem a (PowerSeries a) 
 	deriving (Functor)
+
+instance (ScalQ b) => ScalQ (PowerSeries b) where
+	scalQ = fmap . scalQ
 
 -- das Monom t
 t :: (Num a) => PowerSeries a
@@ -65,10 +70,13 @@ seriesCompInv (Elem c (Elem l s)) = let
 	r = fmap negate $ seriesComp s inv * b^2
 	in if (c,l) == (0,1) then inv else error "Not invertible"
 
-seriesDiff (Elem s sr) = let
-	d i (Elem a ar) = Elem (i*a) $ d (i+1) ar
-	in d 1 sr
+seriesDiff (Elem s sr) = d 1 sr where
+	d i (Elem a ar) = Elem (fromInteger i*a) $ d (i+1) ar
 
+-- Antidifferential. Konstanter Term wird a.
+seriesInt a f = Elem a $ si 1 f where
+	si n (Elem a r) = Elem (scalQ (1 % n) a) $ si (n+1) r
+ 
 -- Setzt das negative Argument ein
 seriesCompNegate (Elem s1 (Elem s2 s)) = Elem s1 $ Elem (negate s2) $ seriesCompNegate s
 
@@ -133,6 +141,18 @@ seriesGeo = Elem 1 $ seriesGeo
 seriesEuler :: Num a => PowerSeries a
 seriesEuler = seriesShiftedProduct $ repeat (-1)
 
+
+-- exp(t*f)
+seriesExpShift f = ef where 
+	ef = seriesInt 1 $ ef*(seriesDiff $ seriesShift 1 f)
+
+-- log(1+t*f)
+seriesLogShift f = seriesInt 0 $ seriesDiff (seriesShift 1 f) * seriesInvShift f
+
+-- (1+t*f)^a
+seriesPowerShift a f = w where 
+	w = seriesInt 1 $ fmap (scalQ a) $ seriesDiff (seriesShift 1 f) * w * seriesInvShift f
+
 -- Rationale bekannte Reihen
 seriesExp ::  Fractional a => PowerSeries a
 seriesCos ::  Fractional a => PowerSeries a
@@ -163,7 +183,7 @@ seriesLog = fmap fromRational $ Elem 0 $ logmake 1 where
 	logmake i = Elem (1/i) $ Elem (-1/(i+1)) $ logmake (i+2)
 
 seriesSqrt (Elem c s) = let
-	r = fmap (/2) $ s - Elem 0 (r^2)
+	r = scalQ (1/2) $ s - Elem 0 (r^2)
 	rt = Elem 1 r
 	in if c == 1 then rt else error "Constant Coefficient not 1"
 
@@ -172,25 +192,23 @@ bernoulliNumbers = expSequence $ seriesInvShift $ seriesShift (-2) seriesExp
 
 instance Floating a => Floating (PowerSeries a) where
 	pi = Elem pi 0
-	exp (Elem c r) = fmap (*exp c) $ seriesCompShift seriesExp r
-	log (Elem c r) = Elem (log c) x where
-		Elem _ x = seriesCompShift seriesLog $ fmap (/c) r
-	sin (Elem c r) = fmap (*sin c) (seriesCompShift seriesCos r) + 
-		fmap (*cos c) (seriesCompShift seriesSin r)
-	cos (Elem c r) = fmap (*cos c) (seriesCompShift seriesCos r) - 
-		fmap (*sin c) (seriesCompShift seriesSin r) 
+	exp f@(Elem c _) = e where e = seriesInt (exp c) (e*seriesDiff f)
+	log f@(Elem c _) = seriesInt (log c) (seriesDiff f / f)
+	sin f@(Elem c _) = si where
+		si = seriesInt (sin c) (co * seriesDiff f)
+		co = seriesInt (cos c) (negate si * seriesDiff f)
+	cos f@(Elem c _) = co where
+		si = seriesInt (sin c) (co * seriesDiff f)
+		co = seriesInt (cos c) (negate si * seriesDiff f)
 	sinh x = fmap (/2) $ exp x - exp (negate x)
 	cosh x = fmap (/2) $ exp x + exp (negate x)
 	asin x = atan $ x / sqrt (1-x^2)
 	acos x = Elem (pi/2 - c) r where Elem c r = asin x
-	atan (Elem c r) = Elem (atan c) x where
-		Elem _ x = seriesCompShift seriesAtan $ r / (Elem (1+c^2) $ fmap (c*) r)
+	atan f@(Elem c _) = seriesInt (atan c) (seriesDiff f / (1+f^2))
 	asinh x = log $ x + sqrt (x^2+1)
 	acosh x = log $ x + sqrt (x^2-1)
 	atanh x = fmap (/2) $ log $ (1+x)/(1-x)
-	sqrt (Elem c r) = fmap (* sqrt c) $ Elem 1 x where
-		rr = fmap (/c) r
-		x = fmap (/2) $ rr - Elem 0 (x^2)
+	sqrt f@(Elem c _) = w where w = seriesInt (sqrt c) $ seriesDiff f / (w+w)
 
 instance (Show a) => Show (PowerSeries a) where
 	show r = let
