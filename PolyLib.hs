@@ -6,6 +6,21 @@ import PowerSeries
 import Polynomial
 import Data.MemoTrie
 import Elementary
+import Data.Ratio
+
+
+instance (Fractional a) => Fractional (Polynomial a) where
+	fromRational = polyConst . fromRational
+	recip = undefined
+
+-- Allgemeine Routine zur Produktion othogonaler Polynome
+-- a_n * p (n+1) = (b_n +x*c_n)*p n - d_n * p (n-1) 
+orthogonalSequence a b c d n = mp n where
+	mp = memo p
+	p 0 = 1
+	p n = let n1 = fromIntegral (n-1) 
+		in if n<0 then 0 else fmap (/a n1) $
+		fmap (*b n1) (mp (n-1)) + fmap (*c n1) (polyShift 1 $ mp (n-1)) - fmap (*d n1) (mp (n-2))
 
 -- Pochhammer-Symbole
 fallingFactorials :: Num a => [Polynomial a]
@@ -32,8 +47,10 @@ chebU n = memo u n where
 	u n = fmap(2*) (polyShift 1 (chebU (n-1))) - chebU (n-2) 
 
 -- Hermite-Polynome
-hermites = 1 : x : zipWith3 op [1..] hermites (tail hermites) where
+hermite = (!!) hermites where
+	hermites = 1 : x : zipWith3 op [1..] hermites (tail hermites)
 	op n a b = polyShift 1 b - fmap (*n) a
+hermiteGenExp = seriesExpShift $ seriesGenerating [x,polyConst$ -1%2]
 
 -- Shapiro-Polynome
 shapiroP = 1 : zipWith3 op (map (2^) [0..]) shapiroP shapiroQ where
@@ -53,11 +70,15 @@ jacobi a b = mj where
 		a3 = (2*m+a+b)*(2*m+a+b+1)*(2*m+a+b+2)
 		a4 = 2*(m+a)*(m+b)*(2*m+a+b+2)
 
+-- Gegenbauer-Polynome
 gegenbauer a n = fmap (*s) $ jacobi (a-1/2) (a-1/2) n where
 	s = rising (2*a) n / rising (a+1/2) n
 
 -- Legendre Polynome
 legendre n = jacobi 0 0 n
 
-
+-- Laguerre Polynome
+laguerre n = orthogonalSequence (+1) (\n -> 2*n+1) (const (-1)) id n
+laguerreGen = seriesGeo * seriesExpShift ( seriesGenerating $ repeat (-x) )
+	:: PowerSeries (Polynomial Rational) 
 
