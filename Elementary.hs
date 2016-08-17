@@ -14,10 +14,17 @@ factorial n = facAcc n 1 where
 	facAcc 0 a = a
 	facAcc n a = facAcc (n-1) $! n*a 
 
+-- Pochhammer-Symbole
+falling a = f where
+	f n = if n==0 then 1 else (a-fromIntegral (n-1)) * f (n-1)
+rising a = r  where
+	r n = if n==0 then 1 else (a+fromIntegral (n-1)) * r (n-1)
+
 -- Binomialkoeffizienten
 binomial n k = if kk<0 then 0 else fromIntegral $ p 1 1 where
 	kk = min k (n-k)
 	p a i = if i>kk then a else p ((a*(n-kk+i))`div` i) (i+1)
+
 
 -- Multinomialkoeffizienten
 multinomial [] = 1
