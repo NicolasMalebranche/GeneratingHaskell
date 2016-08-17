@@ -1,15 +1,12 @@
-{-# LANGUAGE MultiParamTypeClasses, DeriveFunctor, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, DeriveFunctor, FlexibleInstances, OverlappingInstances, IncoherentInstances #-}
 module Polynomial where
 
 import PowerSeries
-import ScalQ
 
 -- Polynome sind Potenzreihen, deren maximaler Grad bekannt ist
 -- Das Nullpolynom hat negativen Grad
 data Polynomial a = Polynomial {deg::Integer, ser::PowerSeries a} deriving Functor
 
-instance (ScalQ a) => ScalQ (Polynomial a) where
-	scalQ = fmap . scalQ
 
 -- das Monom x
 x :: (Num a) => Polynomial a

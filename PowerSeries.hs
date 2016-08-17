@@ -3,7 +3,6 @@ module PowerSeries where
 
 import Data.List
 import Data.Ratio
-import ScalQ
 
 infixl 5 °
 class Composeable a b c | a b -> c where
@@ -12,8 +11,6 @@ class Composeable a b c | a b -> c where
 data PowerSeries a = Elem a (PowerSeries a) 
 	deriving (Functor)
 
-instance (ScalQ b) => ScalQ (PowerSeries b) where
-	scalQ = fmap . scalQ
 
 -- das Monom t
 t :: (Num a) => PowerSeries a
@@ -75,7 +72,7 @@ seriesDiff (Elem s sr) = d 1 sr where
 
 -- Antidifferential. Konstanter Term wird a.
 seriesInt a f = Elem a $ si 1 f where
-	si n (Elem a r) = Elem (scalQ (1 % n) a) $ si (n+1) r
+	si n (Elem a r) = Elem (fromRational (1 % n) * a) $ si (n+1) r
  
 -- Setzt das negative Argument ein
 seriesCompNegate (Elem s1 (Elem s2 s)) = Elem s1 $ Elem (negate s2) $ seriesCompNegate s
@@ -151,7 +148,7 @@ seriesLogShift f = seriesInt 0 $ seriesDiff (seriesShift 1 f) * seriesInvShift f
 
 -- (1+t*f)^a
 seriesPowerShift a f = w where 
-	w = seriesInt 1 $ fmap (scalQ a) $ seriesDiff (seriesShift 1 f) * w * seriesInvShift f
+	w = seriesInt 1 $ fmap (* fromRational a) $ seriesDiff (seriesShift 1 f) * w * seriesInvShift f
 
 -- Rationale bekannte Reihen
 seriesExp ::  Fractional a => PowerSeries a
@@ -183,7 +180,7 @@ seriesLog = fmap fromRational $ Elem 0 $ logmake 1 where
 	logmake i = Elem (1/i) $ Elem (-1/(i+1)) $ logmake (i+2)
 
 seriesSqrt (Elem c s) = let
-	r = scalQ (1/2) $ s - Elem 0 (r^2)
+	r = fmap (/2) $ s - Elem 0 (r^2)
 	rt = Elem 1 r
 	in if c == 1 then rt else error "Constant Coefficient not 1"
 
