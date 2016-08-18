@@ -23,28 +23,30 @@ orthogonalSequence a b c d n = mp n where
 		fmap (*b n1) (mp (n-1)) + fmap (*c n1) (polyShift 1 $ mp (n-1)) - fmap (*d n1) (mp (n-2))
 
 -- Pochhammer-Symbole
-fallingFactorials :: Num a => [Polynomial a]
-fallingFactorials = map (polyFromList.map fromInteger) $ scanl make [1] [1..] where
-	make x n = zipWith (\ a b -> a-n*b) (0:x) (x++[0])
+fallingFactorial 0 = 1
+fallingFactorial n = polyShift 1 rn - fmap (* (fromIntegral $ n-1)) rn 
+	where rn = fallingFactorial $ n-1
+fallingFactorialGenExp = seriesPowerShift x 1
 
-risingFactorials :: Num a => [Polynomial a]
-risingFactorials = map (polyFromList.map fromInteger) $ scanl make [1] [1..] where
-	make x n = zipWith (\ a b -> a+n*b) (0:x) (x++[0])
- 
+risingFactorial 0 = 1
+risingFactorial n = polyShift 1 rn + fmap (* (fromIntegral $ n-1)) rn 
+	where rn = risingFactorial $ n-1
+risingFactorialGenExp = seriesPowerShift (-x) (-1)
 
 -- Tschebyscheff-Polynome
-tcheb1 = zipWith (-) tcheb2 $ map (polyShift 1) $ 0:tcheb2
-chebT n = memo t n where
+chebT n = mt n where
+	mt = memo t
 	t 0 = 1
 	t 1 = x
-	t n = fmap(2*) (polyShift 1 (chebT (n-1))) - chebT (n-2) 
+	t n = fmap(2*) (polyShift 1 (mt (n-1))) - mt (n-2) 
+chebTGen = chebUGen - fmap (polyShift 1) (seriesShift 1 chebUGen) 
 
-tcheb2 = 1 : (2*x) : zipWith op tcheb2 (tail tcheb2) where
-	op a b = fmap (2*) (polyShift 1 b) - a
-chebU n = memo u n where
+chebU n = mu n where
+	mu = memo u
 	u 0 = 1
 	u 1 = x+x
-	u n = fmap(2*) (polyShift 1 (chebU (n-1))) - chebU (n-2) 
+	u n = fmap(2*) (polyShift 1 (mu (n-1))) - mu (n-2) 
+chebUGen = seriesInvShift $ seriesGenerating [-2*x,1]
 
 -- Hermite-Polynome
 hermite = (!!) hermites where
@@ -69,13 +71,21 @@ jacobi a b = mj where
 		a2 = (2*m+a+b+1)*(a^2-b^2)
 		a3 = (2*m+a+b)*(2*m+a+b+1)*(2*m+a+b+2)
 		a4 = 2*(m+a)*(m+b)*(2*m+a+b+2)
+jacobiGen a b = let 
+	r = seriesPowerShift (1/2) $ seriesGenerating [-2*x,1]
+	ri = seriesPowerShift (-1/2) $ seriesGenerating [-2*x,1]
+	rs = fmap (fmap (/2)) $ seriesShift (-1) r + 1
+	in ri * seriesPowerShift (-a) (rs-1) * seriesPowerShift (-b) rs
+
 
 -- Gegenbauer-Polynome
 gegenbauer a n = fmap (*s) $ jacobi (a-1/2) (a-1/2) n where
 	s = rising (2*a) n / rising (a+1/2) n
+gegenbauerGen a = seriesPowerShift (-a) $ seriesGenerating [-2*x,1]
 
 -- Legendre Polynome
 legendre n = jacobi 0 0 n
+legendreGen = gegenbauerGen (1/2) 
 
 -- Laguerre Polynome
 laguerre n = orthogonalSequence (+1) (\n -> 2*n+1) (const (-1)) id n
