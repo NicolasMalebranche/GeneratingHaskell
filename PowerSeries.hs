@@ -184,6 +184,9 @@ seriesSqrt (Elem c s) = let
 	rt = Elem 1 r
 	in if c == 1 then rt else error "Constant Coefficient not 1"
 
+seriesHypergeo (a,b) c = h 1 (a,b,c,1) where
+	h s (a,b,c,n) = Elem s $ h (s*a*b/c*fromRational(1%n)) (a+1,b+1,c+1,n+1)
+
 bernoulliNumbers :: [Rational]
 bernoulliNumbers = expSequence $ seriesInvShift $ seriesShift (-2) seriesExp
 
