@@ -148,7 +148,7 @@ seriesLogShift f = seriesInt 0 $ seriesDiff (seriesShift 1 f) * seriesInvShift f
 
 -- (1+t*f)^a
 seriesPowerShift a f = w where 
-	w = seriesInt 1 $ fmap (* fromRational a) $ seriesDiff (seriesShift 1 f) * w * seriesInvShift f
+	w = seriesInt 1 $ fmap (a*) $ seriesDiff (seriesShift 1 f) * w * seriesInvShift f
 
 -- Rationale bekannte Reihen
 seriesExp ::  Fractional a => PowerSeries a
