@@ -11,7 +11,15 @@ listClean p = psrf where
 -- Datenstruktur. Wird gespeichert als Sparse-Liste
 newtype InfinitePolynomial p a = InfPol {list::[(p,a)]}
 infPol l = InfPol $ listClean l
+infPolConst y = InfPol [(partEmpty,y)]
 x_ a = InfPol [(PartAlpha a,1::Rational)]
+
+-- Liste der homogenen Monome vom Grad deg in dim Variablen
+monomials dim deg = [ x_ a | a<-find dim deg] where
+	find 0 0 = [[]]
+	find 0 _ = []
+	find dim deg = [ k:a | k<- [0..deg], a <- find (dim-1) (deg-k) ]
+	
 
 instance (Num a,Eq a, Partition p,Ord p) => Num (InfinitePolynomial p a) where
 	fromInteger 0 = InfPol []
