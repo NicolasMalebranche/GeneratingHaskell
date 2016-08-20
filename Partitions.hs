@@ -61,7 +61,7 @@ class (Eq a, HasTrie a) => Partition a where
 	partJoin :: a -> a -> a
 	partMeet :: a -> a -> a
 
-	-- Nächste Partitiond
+	-- Nächste Partition
 	partSucc :: a -> a
 	
 	-- Leere Partition
@@ -88,6 +88,9 @@ class (Eq a, HasTrie a) => Partition a where
 	partUnion :: a -> a -> a
 	-- Schnitt zweier Partitionen
 	partIntersection :: a -> a -> a
+	-- Drehung nach Ruedi Suter, n-fache Anwendung ist id
+	-- Die Zahl muß mindenstens so groß wie die Länge plus der erste Eintrag sein
+	partSuterSlide :: Int -> a -> a
 
 	-- partRank
 	partCrank :: a -> Int
@@ -162,12 +165,15 @@ instance Partition PartitionAlpha where
 		pc (x:r)(y:p) = if x>=y then pc r p else pc r (y-x+a:q) where (a:q) =p++[0]
 	partUnion a b = partFromLambda $ partUnion (partAsLambda a) $ partAsLambda b
 	partIntersection a b = partFromLambda $ partIntersection (partAsLambda a) $ partAsLambda b
+	partSuterSlide n (PartAlpha l) = PartAlpha $ (n-i-sum l-1) : take i l ++ if t==1 then [] else [t-1] where
+		i = foldr (\ a b -> if b<0&&a==0 then b else b+1) (-1) l; t = l!!i
 	partCrank (PartAlpha a) = if w== 0 then l else m-w where
 		w = if a ==[] then 0 else head a
 		l = last$ 0: [ n| (n,m)<- zip [1..] a, m > 0]
 		m = sum $ drop w a
 
--- Alle Partitionen eines bestimmten Gewichts, aufsteigend sortiert
+-- Alle Partitionen eines bestimmten Gewichts, lexikographisch aufsteigend sortiert
+-- Kompatibel mit der Dominanzordnung
 partOfWeight :: Int -> [PartitionAlpha]
 partOfWeight = let
 	build n 1 acc = [alphaPrepend n acc]
@@ -176,7 +182,8 @@ partOfWeight = let
 	a w =  if w<0 then [] else  build w w partEmpty
 	in memo a
 
--- Alle Partitionen eines bestimmten Gewicht und einer bestimmten Länge, aufsteigend sortiert
+-- Alle Partitionen eines bestimmten Gewicht und einer bestimmten Länge, lexikographisch aufsteigend sortiert
+-- Kompatibel mit der Dominanzordnung
 partOfWeightLength = let
 	build 0 0 _ = [partEmpty]
 	build w 0 _ = []
@@ -308,6 +315,8 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 	partContains (PartLambda l) (PartLambda m) = all id $ zipWith' (>=) l m
 	partUnion (PartLambda l) (PartLambda m) = PartLambda $ zipWith' max l m
 	partIntersection (PartLambda l) (PartLambda m) = PartLambda $ zipWith min l m
+	partSuterSlide n (PartLambda []) = partSuterSlide n (PartLambda [0])
+	partSuterSlide n (PartLambda (e:r)) = PartLambda $ map (+1) r ++ replicate (n-fromIntegral e- length r - 1) 1
 	partCrank (PartLambda lam) = if w== 0 then l else m-w where
 		l = if lam == [] then 0 else fromIntegral $ head lam
 		w = length $ filter (1==) lam
