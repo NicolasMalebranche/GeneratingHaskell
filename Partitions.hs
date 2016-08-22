@@ -116,6 +116,11 @@ partAlpha = PartAlpha . pA [] where
 	pA n (0:r) = pA (0:n) r
 	pA n (x:r) = n ++ (x : pA [] r)
 
+-- nimmt die erste Teilpartition der Länge k
+alphaTake k (PartAlpha a) = partAlpha $ t k a where
+	t k [] = []
+	t k (i:a) = if i<k then i : t (k-i) a else [k]
+
 zipAlpha op (PartAlpha a) (PartAlpha b) = PartAlpha $ zipWith' op a b
 
 -- Normales zipWith aber ohne Abschneiden bei unterschiedlicher Länge
@@ -177,9 +182,9 @@ instance Partition PartitionAlpha where
 	partSuterSlide n (PartAlpha l) = PartAlpha $ (n-i-sum l-1) : take i l ++ if t==1 then [] else [t-1] where
 		i = foldr (\ a b -> if b<0&&a==0 then b else b+1) (-1) l; t = l!!i
 	partDim = partDim . partAsLambda
-	partDurfee p@(PartAlpha a) = dur 0 (partLength p) [] a where
-	---Korrigieren!
-		dur m k b a = if k <= m then (m, partEmpty ,PartAlpha a) else dur (m+1) (k-head a) (head a:b) (tail a)
+	partDurfee p@(PartAlpha a) = dur 0 (partLength p) a where
+		tk m k = partAlpha $ c ++ map (+(k-m))(take 1 d)  where (c,d) = splitAt (m-1) a 
+		dur m k r = if k <= m then (m,tk m k, PartAlpha r) else dur (m+1) (k-head r) (tail r)
 	partCrank (PartAlpha a) = if w== 0 then l else m-w where
 		w = if a ==[] then 0 else head a
 		l = last$ 0: [ n| (n,m)<- zip [1..] a, m > 0]
