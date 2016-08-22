@@ -96,6 +96,9 @@ class (Eq a, HasTrie a) => Partition a where
 	partSuterSlide :: Int -> a -> a
 	-- Dimension einer Partition = Anzahl maximaler Inklusionsketten 
 	partDim :: a -> Integer
+	-- Durfee Quadrat: Größtes Quadrat, das in die Partition passt
+	-- gibt außerdem das die zwei übrigbleibenden Partitionen zurück
+	partDurfee :: a -> (Int,a,a)
 
 	-- partRank
 	partCrank :: a -> Int
@@ -174,6 +177,9 @@ instance Partition PartitionAlpha where
 	partSuterSlide n (PartAlpha l) = PartAlpha $ (n-i-sum l-1) : take i l ++ if t==1 then [] else [t-1] where
 		i = foldr (\ a b -> if b<0&&a==0 then b else b+1) (-1) l; t = l!!i
 	partDim = partDim . partAsLambda
+	partDurfee p@(PartAlpha a) = dur 0 (partLength p) [] a where
+	---Korrigieren!
+		dur m k b a = if k <= m then (m, partEmpty ,PartAlpha a) else dur (m+1) (k-head a) (head a:b) (tail a)
 	partCrank (PartAlpha a) = if w== 0 then l else m-w where
 		w = if a ==[] then 0 else head a
 		l = last$ 0: [ n| (n,m)<- zip [1..] a, m > 0]
@@ -331,6 +337,9 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 		a = product [1..n]
 		b = product [  r | (li,i)<- e, r <- [1.. li + k - toInteger i ]]
 		c = product [(li-lj) + toInteger(j-i) | (li,i) <- e, (lj,j) <- drop i e]
+	partDurfee (PartLambda l) = dur 0 l where
+		dur i r = if null r || i >= fromIntegral (head r) 
+		then ( i, partLambda $ take i [x-fromIntegral i| x<-l], PartLambda r) else dur (i+1) (tail r)
 	partCrank (PartLambda lam) = if w== 0 then l else m-w where
 		l = if lam == [] then 0 else fromIntegral $ head lam
 		w = length $ filter (1==) lam
