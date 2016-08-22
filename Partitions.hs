@@ -66,7 +66,10 @@ class (Eq a, HasTrie a) => Partition a where
 	
 	-- Leere Partition
 	partEmpty :: a
-	
+			
+	-- Treppen-Partition
+	partStaircase :: Integral k => k -> a
+
 	-- Transformation nach Alpha-Schreibweise
 	partAsAlpha :: a -> PartitionAlpha
 	-- Transformation von Alpha-Schreibweise
@@ -91,6 +94,8 @@ class (Eq a, HasTrie a) => Partition a where
 	-- Drehung nach Ruedi Suter, n-fache Anwendung ist id
 	-- Die Zahl muß mindenstens so groß wie die Länge plus der erste Eintrag sein
 	partSuterSlide :: Int -> a -> a
+	-- Dimension einer Partition = Anzahl maximaler Inklusionsketten 
+	partDim :: a -> Integer
 
 	-- partRank
 	partCrank :: a -> Int
@@ -132,6 +137,7 @@ instance Partition PartitionAlpha where
 	partWeight (PartAlpha r) = fromIntegral $ sum $ zipWith (*) r [1..]
 	partLength (PartAlpha r) = fromIntegral $ sum r
 	partEmpty = PartAlpha []
+	partStaircase k = PartAlpha $ replicate (fromIntegral k - 1) 1
 	partZ (PartAlpha l) = foldr (*) 1 $ zipWith (\a i -> factorial a * i^a) (map fromIntegral l) [1..] where
 		factorial n = if n==0 then 1 else n*factorial(n-1)
 	partConj = partAsAlpha . alphaConj	
@@ -167,6 +173,7 @@ instance Partition PartitionAlpha where
 	partIntersection a b = partFromLambda $ partIntersection (partAsLambda a) $ partAsLambda b
 	partSuterSlide n (PartAlpha l) = PartAlpha $ (n-i-sum l-1) : take i l ++ if t==1 then [] else [t-1] where
 		i = foldr (\ a b -> if b<0&&a==0 then b else b+1) (-1) l; t = l!!i
+	partDim = partDim . partAsLambda
 	partCrank (PartAlpha a) = if w== 0 then l else m-w where
 		w = if a ==[] then 0 else head a
 		l = last$ 0: [ n| (n,m)<- zip [1..] a, m > 0]
@@ -265,6 +272,7 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 	partWeight (PartLambda r) = fromIntegral $ sum r
 	partLength (PartLambda r) = fromIntegral $ length r
 	partEmpty = PartLambda []
+	partStaircase k = PartLambda $ map fromIntegral [k-1,k-2..1]
 	partAsAlpha = lambdaToAlpha
 	partAsLambda (PartLambda r) = PartLambda $ map fromIntegral r
 	partFromAlpha (PartAlpha l) = PartLambda $ reverse $ f 1 l where
@@ -317,6 +325,12 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 	partIntersection (PartLambda l) (PartLambda m) = PartLambda $ zipWith min l m
 	partSuterSlide n (PartLambda []) = partSuterSlide n (PartLambda [0])
 	partSuterSlide n (PartLambda (e:r)) = PartLambda $ map (+1) r ++ replicate (n-fromIntegral e- length r - 1) 1
+	partDim la@(PartLambda l) = (a*c) `div` b  where
+		(k,n) = (partLength la, partWeight la)
+		e = zip (map toInteger l) [1..]
+		a = product [1..n]
+		b = product [  r | (li,i)<- e, r <- [1.. li + k - toInteger i ]]
+		c = product [(li-lj) + toInteger(j-i) | (li,i) <- e, (lj,j) <- drop i e]
 	partCrank (PartLambda lam) = if w== 0 then l else m-w where
 		l = if lam == [] then 0 else fromIntegral $ head lam
 		w = length $ filter (1==) lam
