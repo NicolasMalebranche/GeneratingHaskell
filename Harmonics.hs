@@ -5,11 +5,16 @@ import Partitions
 import Data.Ratio
 import PolyLib
 import Polynomial
+import Elementary
 
-laplace (InfPol f) = infPol [ (PartAlpha b, x*y)| (PartAlpha a , x ) <- f, (b,y) <- l a] where
-	l [] = []
-	l (t:a) = if t >= 2 then (t-2 : a,fromIntegral $ t*(t-1)) : r else r where
-		r = [ (t:c,x) | (c,x) <- l a]
+laplace p = laplaceN (-1) p
+
+-- Teilweiser Laplace-Operator d_1^2 + ... + d_n^2
+laplaceN n (InfPol f) = infPol [ (PartAlpha b, x*y)| (PartAlpha a , x ) <- f, (b,y) <- l n a] where
+	l n [] = []
+	l 0 r = []
+	l n (t:a) = if t >= 2 then (t-2 : a,fromIntegral $ t*(t-1)) : r else r where
+		r = [ (t:c,x) | (c,x) <- l (n-1) a]
 
 radSq dim =  InfPol [ (PartAlpha ( b i), 1) | i<- [1..dim]] where
 	b i = [if j==i then 2 else 0 | j <-[1..dim]]
@@ -18,7 +23,7 @@ harmPr dim deg f = infPol$list$rec 0 1 f where
 	n = fromIntegral deg; d = fromIntegral dim
 	r = radSq dim
 	rec j a f = if 2*j> n then 0 else 
-		infPolScale a f + r * rec (j+1) (a/4/(j+1)/(2-n-d/2+j)) (laplace f) 
+		infPolScale a f + r * rec (j+1) (a/4/(j+1)/(2-n-d/2+j)) (laplaceN dim f) 
 
 decomp dim (-1) f = []
 decomp dim (-2) f = []
@@ -43,11 +48,14 @@ integrate d (InfPol p) = infPol[ (PartAlpha (drop d a) , x*f a / vol)|  (PartAlp
 	gamma n = product [ n-1, n-2 .. 1]
 	vol = 2/ gamma (fromIntegral d/2)
 
-reproducing d n =  gegn   where
-	geg =  polyToList $ fmap (* (fromIntegral n /lam +1)) $ gegenbauer lam n
-	gegn = sum [infPolConst(geg!!(n-i))*scalar^(n-i)*norm2^(i`div` 2) | i<-[0,2..n]]
-	lam = fromIntegral d/2 +1 ::Rational
-	scalar = sum [x_ $ replicate i 0 ++[1]++replicate (d-1) 0 ++[1]++replicate (d-i-1) 0 | i<- [0..d-1]]
-	norm2 = radSq d * InfPol[ (PartAlpha (replicate d 0++a),x) | let InfPol p = radSq d, (PartAlpha a,x) <-p]
-	
+-- Skalarprodukt: x_1*x_{d+1} + ... + x_d*x_{2d}
+scalar d = sum [x_ $ replicate i 0 ++[1]++replicate (d-1) 0 ++[1]++replicate (d-i-1) 0 | i<- [0..d-1]]
+
+-- Für f homogenes Polynom vom Grad n in d Variablen gilt:
+-- integrate d (reproducing d n * f) == harmPr d n f 
+reproducing d n = infPolScale (fromIntegral $ product [d,d+2..d+2*n-2]) hpkn where
+	kn = infPolScale (1/factorial n) $ scalar d ^ n
+	hpkn = harmPr d n kn
+
+
 
