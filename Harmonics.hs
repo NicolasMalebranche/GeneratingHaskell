@@ -16,9 +16,16 @@ laplaceN n (InfPol f) = infPol [ (PartAlpha b, x*y)| (PartAlpha a , x ) <- f, (b
 	l n (t:a) = if t >= 2 then (t-2 : a,fromIntegral $ t*(t-1)) : r else r where
 		r = [ (t:c,x) | (c,x) <- l (n-1) a]
 
+-- Radius zum Quadrat
 radSq dim =  InfPol [ (PartAlpha ( b i), 1) | i<- [1..dim]] where
 	b i = [if j==i then 2 else 0 | j <-[1..dim]]
 
+-- Multipliziert so oft mit radSq d, bis das Polynom homogen vom Grad n ist
+homogenize d n (InfPol f) = sum [ infPolScale x (l n a) | (PartAlpha a , x ) <- f] where
+	l n a = let diff = n - sum (take d a) in
+		if even diff then x_ a * radSq d ^ div diff 2 else error "Grad passt nicht"
+
+-- Projiziert auf den harmonischen Anteil von f, wobei f homogen vom Grad deg in dim Dimensionen ist
 harmPr dim deg f = infPol$list$rec 0 1 f where
 	n = fromIntegral deg; d = fromIntegral dim
 	r = radSq dim
