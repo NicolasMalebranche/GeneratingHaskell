@@ -10,7 +10,7 @@ combinations (l:r) = [a:b | a<-l, b<-cr ] where cr=combinations r
 
 
 -- Fakultätsfunktion
-factorial n = facAcc n 1 where 
+factorial n = fromIntegral $ facAcc n 1 where 
 	facAcc 0 a = a
 	facAcc n a = facAcc (n-1) $! n*a 
 
