@@ -37,10 +37,6 @@ class (Eq a, HasTrie a) => Partition a where
 	
 	-- Konjugierte Partition
 	partConj :: a -> a
-	partConj = res. partAsAlpha where
-		make l (m:r) = l : make (l-m) r
-		make _ [] = []
-		res (PartAlpha r) = partFromLambda $ PartLambda $ make (sum r) r
 	-- Um die linke Spalte reduzierte Partition
 	partReduceLeft :: a -> a
 	-- Um die obere Zeile reduzierte Partition	
@@ -97,7 +93,7 @@ class (Eq a, HasTrie a) => Partition a where
 	-- Dimension einer Partition = Anzahl maximaler Inklusionsketten 
 	partDim :: a -> Integer
 	-- Durfee Quadrat: Größtes Quadrat, das in die Partition passt
-	-- gibt außerdem das die zwei übrigbleibenden Partitionen zurück
+	-- gibt außerdem die zwei übrigbleibenden Partitionen zurück
 	partDurfee :: a -> (Int,a,a)
 
 	-- partRank
@@ -148,7 +144,7 @@ instance Partition PartitionAlpha where
 	partStaircase k = PartAlpha $ replicate (fromIntegral k - 1) 1
 	partZ (PartAlpha l) = foldr (*) 1 $ zipWith (\a i -> factorial a * i^a) (map fromIntegral l) [1..] where
 		factorial n = if n==0 then 1 else n*factorial(n-1)
-	partConj = partAsAlpha . alphaConj	
+	partConj (PartAlpha r) = partFromLambda $ PartLambda $ init $ scanl (-) (sum r) r	
 	partAsAlpha = id
 	partFromAlpha = id
 	partAsLambda (PartAlpha l) = PartLambda $ reverse $ f 1 l where
@@ -291,6 +287,7 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 		f i (0:r) = f (i+1) r
 		f i (m:r) = i : f i ((m-1):r)
 	partFromLambda (PartLambda r) = PartLambda $ map fromIntegral r
+	partConj (PartLambda r) = partFromAlpha $ PartAlpha $ map fromIntegral $ zipWith (-) r $ tail r ++ [0] 
 	partAllPerms (PartLambda l) = it $ Just $ permute $ partWeight $ PartLambda l where
 		it (Just p) = if Data.List.sort (map length $ cycles p) == r then p : it (next p) else it (next p)
 		it Nothing = []
@@ -373,25 +370,4 @@ instance HasTrie i => HasTrie (PartitionLambda i) where
 	untrie f =  untrie (unTrieTypeL f) . lamList
 	enumerate f  = map (\(a,b) -> (PartLambda a,b)) $ enumerate (unTrieTypeL f)
 
------------------------------------------------------------------------------------------
-
--- Konjugation von Partitionen ist dann besonders leicht, wenn die Darstellungen gewechselt werden
-
-lambdaConj (PartLambda l) = PartAlpha $ zipWith (-) ll (tail ll ++ [0]) where
-	ll = map fromIntegral l
-
-alphaConj (PartAlpha a) = PartLambda $ init $ scanr (+) 0 a
-
-forkDual :: (OtherRepresentation a b, OtherRepresentation b a) =>
-	(a -> a -> a) -> b -> b -> b
-forkDual op a b = otherConj $ op (otherConj a) (otherConj b)
-
-class (Partition a, Partition b) => OtherRepresentation a b | a->b  where
-	otherConj :: a -> b
-
-instance OtherRepresentation PartitionAlpha (PartitionLambda Int) where
-	otherConj a = alphaConj a
-
-instance OtherRepresentation (PartitionLambda Int) PartitionAlpha where
-	otherConj l = lambdaConj l
 
