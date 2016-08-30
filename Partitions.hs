@@ -144,7 +144,7 @@ instance Partition PartitionAlpha where
 	partStaircase k = PartAlpha $ replicate (fromIntegral k - 1) 1
 	partZ (PartAlpha l) = foldr (*) 1 $ zipWith (\a i -> factorial a * i^a) (map fromIntegral l) [1..] where
 		factorial n = if n==0 then 1 else n*factorial(n-1)
-	partConj (PartAlpha r) = partFromLambda $ PartLambda $ init $ scanl (-) (sum r) r	
+	partConj = partFromLambda . conjAL	
 	partAsAlpha = id
 	partFromAlpha = id
 	partAsLambda (PartAlpha l) = PartLambda $ reverse $ f 1 l where
@@ -165,9 +165,9 @@ instance Partition PartitionAlpha where
 	partCorners p@(PartAlpha a) = pc (partLength p) 1 [] a where 
 		pc _ _ acc [] = acc
 		pc i j acc (a:r) = if a>0 then pc (i-fromIntegral a) (j+1) ((i,j):acc) r else pc i (j+1) acc r
-	partDominates a b = partDominates (partAsLambda a) (partAsLambda b)
-	partJoin a b = partAsAlpha $ partMeet (partAsLambda a) (partAsLambda b)
-	partMeet a b = partAsAlpha $ partJoin (partAsLambda a) (partAsLambda b)
+	partDominates a b = partDominates (conjAL b) (conjAL a)
+	partJoin a b = conjLA $ partMeet (conjAL a) (conjAL b)
+	partMeet a b = conjLA $ partJoin (conjAL a) (conjAL b)
 	partAdd = zipAlpha (+)
 	partContains (PartAlpha a) (PartAlpha b) = pc a b where
 		pc _ [] = True
@@ -287,7 +287,7 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 		f i (0:r) = f (i+1) r
 		f i (m:r) = i : f i ((m-1):r)
 	partFromLambda (PartLambda r) = PartLambda $ map fromIntegral r
-	partConj (PartLambda r) = partFromAlpha $ PartAlpha $ map fromIntegral $ zipWith (-) r $ tail r ++ [0] 
+	partConj  = partFromAlpha . conjLA
 	partAllPerms (PartLambda l) = it $ Just $ permute $ partWeight $ PartLambda l where
 		it (Just p) = if Data.List.sort (map length $ cycles p) == r then p : it (next p) else it (next p)
 		it Nothing = []
@@ -369,5 +369,11 @@ instance HasTrie i => HasTrie (PartitionLambda i) where
 	trie f = TrieTypeL $ trie $ f . PartLambda
 	untrie f =  untrie (unTrieTypeL f) . lamList
 	enumerate f  = map (\(a,b) -> (PartLambda a,b)) $ enumerate (unTrieTypeL f)
+
+
+-- Konjugationen mit DarstellungsWechsel
+
+conjAL (PartAlpha r) =  PartLambda $ init $ scanl (-) (sum r) r
+conjLA (PartLambda r) = PartAlpha $ map fromIntegral $ zipWith (-) r $ tail r ++ [0] 
 
 
