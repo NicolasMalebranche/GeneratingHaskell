@@ -99,6 +99,10 @@ class (Eq a, HasTrie a) => Partition a where
 	-- partRank
 	partCrank :: a -> Int
 
+	-- Glaisher Bijektionen
+	partGlaisher1 :: Int -> a -> a
+	partGlaisher2 :: Int -> a -> a
+
 -----------------------------------------------------------------------------------------
 
 -- Datentyp für Partitionen in Alpha-Schreibeweise
@@ -185,6 +189,14 @@ instance Partition PartitionAlpha where
 		w = if a ==[] then 0 else head a
 		l = last$ 0: [ n| (n,m)<- zip [1..] a, m > 0]
 		m = sum $ drop w a
+	partGlaisher1 m (PartAlpha a) = partAlpha $ dec a where
+		dec a = if a==na then a else dec na where na = zipWith' (+) (g a) (f a) 
+		g a = [ if is then 0 else j | (i,j) <- zip [1..] a, let is = mod i m==0]
+		f a = [ m*j | (i,j) <- zip [1..] a, mod i m ==0 ] 
+	partGlaisher2 m (PartAlpha a) = PartAlpha $ kill 1 a where
+		kill _ [] = []
+		kill i (j:r) = if j<m then j : kill (i+1) r else
+			mo : kill (i+1) (zipWith' (+) (replicate (i*(m-1)-1) 0 ++ [di]) r) where (di,mo) = divMod j m
 
 -- Alle Partitionen eines bestimmten Gewichts, lexikographisch aufsteigend sortiert
 -- Kompatibel mit der Dominanzordnung
@@ -346,6 +358,10 @@ instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
 		l = if lam == [] then 0 else fromIntegral $ head lam
 		w = length $ filter (1==) lam
 		m = length $ filter (fromIntegral w < ) lam
+	partGlaisher1 m (PartLambda r) = PartLambda $ Data.List.sortBy (flip compare) $ g r where
+		g [] = []
+		g (a:r) = if mo==0 then g (replicate m di ++ r) else a: g r where (di,mo) = divMod a (fromIntegral m) 
+	partGlaisher2 m l = partFromAlpha $ partGlaisher2 m $ partFromLambda l
 
 instance (Eq i, Num i) => Eq (PartitionLambda i) where
 	PartLambda p == PartLambda q = findEq p q where
