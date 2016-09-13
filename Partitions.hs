@@ -34,6 +34,9 @@ class (Eq a, HasTrie a) => Partition a where
 	-- Das in den Papern übliche z
 	partZ :: Integral i => a -> i
 	partZ = partZ.partAsAlpha
+
+	-- Ist die Partition leer?
+	partNull :: a -> Bool
 	
 	-- Konjugierte Partition
 	partConj :: a -> a
@@ -148,6 +151,7 @@ instance Partition PartitionAlpha where
 	partStaircase k = PartAlpha $ replicate (fromIntegral k - 1) 1
 	partZ (PartAlpha l) = foldr (*) 1 $ zipWith (\a i -> factorial a * i^a) (map fromIntegral l) [1..] where
 		factorial n = if n==0 then 1 else n*factorial(n-1)
+	partNull (PartAlpha r) = all (0==) r
 	partConj = partFromLambda . conjAL	
 	partAsAlpha = id
 	partFromAlpha = id
@@ -288,6 +292,7 @@ lambdaToAlpha (PartLambda (s:p)) = lta 1 s p [] where
 		lta 0 (c-1) (s:p) (m:a)
 
 instance (Integral i, HasTrie i) => Partition (PartitionLambda i) where
+	partNull (PartLambda r) = all (0==) r
 	partWeight (PartLambda r) = fromIntegral $ sum r
 	partLength (PartLambda r) = fromIntegral $ length r
 	partEmpty = PartLambda []

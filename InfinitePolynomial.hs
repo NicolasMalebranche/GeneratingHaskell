@@ -19,6 +19,9 @@ monomials dim deg = [ x_ a | a<-find dim deg] where
 	find 0 0 = [[]]
 	find 0 _ = []
 	find dim deg = [ k:a | k<- [0..deg], a <- find (dim-1) (deg-k) ]
+
+-- Konstanter Koeffizient
+infPolConstCoeff (InfPol p) = sum [ x| (r,x) <- p, partNull r]
 	
 
 instance (Num a,Eq a, Partition p,Ord p) => Num (InfinitePolynomial p a) where
