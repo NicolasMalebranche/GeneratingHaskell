@@ -3,7 +3,11 @@ module Harmonics where
 import InfinitePolynomial
 import Partitions
 import Data.Ratio
+import Data.Array
 import Elementary
+import LinearAlgebra
+import MatrixAlgorithms
+import Polynomial
 
 laplace p = laplaceN (-1) p
 
@@ -62,9 +66,10 @@ reproducing d n = infPolScale (fromIntegral $ product [d,d+2..d+2*n-2]) hpkn whe
 	kn = infPolScale (1/factorial n) $ scalar d ^ n
 	hpkn = harmPr d n kn
 
-bilinears d n = [ rix $ reproducing d k | k <- [n,n-2..0]] where
+bilinears d n = [ polyClean$polyFromList$berkowitz [1..m] $rix $ reproducing d k | k <- [n,n-2..0]] where
 	mon = monomials d n
-	rix r = [infPolConstCoeff$ integrate d $ x * ry | y<- mon, 
+	m = length mon
+	rix r = listArray ((1,1),(m,m)) [infPolConstCoeff$ integrate d $ x * ry | y<- mon, 
 			let ry = integrate d $ r*y, x<-mon]
 
 
