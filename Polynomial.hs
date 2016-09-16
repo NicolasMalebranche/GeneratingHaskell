@@ -109,6 +109,14 @@ polyEuclid p q = if deg p < 0 then (q, (0,1))
 	(d,m) = polyDivMod q p
 	(gcd, (x,y)) = polyEuclid m p
 
+-- Falls f = a_1*a_2^2*a_3^3* ... 
+-- liefert [a_1,a_2,a_3 .. ]  (bis auf konstante Vielfache)
+polySquareFree f = if f==0 then [0] else sf g (fst (polyDivMod f g)) where
+	g = polyGCD f (polyDiff f)
+	sf c d = if fst (polyTop c) == 0 then [d] else p : sf ci di where
+		ci = polyGCD c (polyDiff c)
+		di = fst (polyDivMod c ci)
+		p = fst (polyDivMod d di)
 
 -- Setzt das negative Argument ein
 polyCompNegate p = Polynomial { deg = deg p, ser = seriesCompNegate $ ser p}
