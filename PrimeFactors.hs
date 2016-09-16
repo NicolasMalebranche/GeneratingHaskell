@@ -13,3 +13,9 @@ primeFactors n = if n==0 then [] else trial (bound n) primes $ abs n where
 	divide n s mult = case divMod n s of
 		(d,0) -> divide d s (mult+1)
 		_ -> (n,mult) 
+
+
+allFactors n = map fst $ f p [(1,1)] where
+        p = primeFactors (n::Integer)
+        f [] a = a
+        f ((q,m):r) a = f r [ (x* q^i, y* q^(m-i)) | (x,y) <- a, i <- [0..m]]
