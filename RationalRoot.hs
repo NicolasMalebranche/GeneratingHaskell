@@ -4,6 +4,9 @@ import Data.Ratio
 import Polynomial
 import PrimeFactors
 import Elementary
+import System.IO.Unsafe
+import System.Random hiding (random)
+import Data.Numbers.Primes(primes)
 
 -- Alle rationalen Nullstellen eines rationalen Polynoms
 -- Der letzte Eintrag ist der verbleibende Faktor
@@ -51,10 +54,52 @@ polPEuclid p f g = if deg f < 0 then (pc g, (0,1))
 	(d,m) = polPDivMod p g f
 	(gcd, (x,y)) = polPEuclid p m f
 
+-- Distinct degree factorization mod p
+-- f muß quadratfrei sein
+polPDDF p f = run 1 ( polyClean $ fmap (flip mod p) f) where
+	run i f = let 
+		g = powerMod (\q-> snd $ polPDivMod p q f) x (p^i) - x
+		(gcd,_) = polPEuclid p f g
+		(ff,_) = polPDivMod p f gcd
+		in 
+		if deg f >= 2*i then if deg gcd > 0 then (gcd,i) : run (i+1) ff else run (i+1) f 
+		else if deg f == 0 then [] else[(f,deg f)]
+
+-- Cantor-Zassenhaus Algorithmus
+-- p muß ungerade Primzahl sein
+polPCZ p f d = cz [f] where
+	r = deg f `div` d
+	random _ = fromIntegral $ unsafePerformIO (getStdRandom (randomR (1,p))) 
+	randPoly _ = polyFromList [ random () | _ <- [1.. deg f]]
+	cz factors = if fromIntegral (length factors) == r then factors else run factors where
+		h = randPoly()
+		g = powerMod (\q-> snd $ polPDivMod p q f) h (div (p^d-1) 2) - 1
+		run [] = []
+		run (u:factors) = (if deg u > d && deg gcd > 0 && deg gcd < deg u then [gcd,co] else [u]) ++ run factors where
+			(gcd, _) = polPEuclid p g u
+			(co,_) = polPDivMod p u gcd
+
+-- Faktorisiert mod p>2
+-- f muß quadratfrei sein mod p
+polPFactor p f = [ h| (g,d) <- polPDDF p f, h <- polPCZ p g d]
+
+-- Faktorisiert ein Polynom über den ganzen Zahlen in irreduzible
+-- Komponenten vermöge des Zassenhaus Algorithmus
+poliFactor ff = if deg f < 2 then [(f,1)] else [(fj,i) | (g,i) <- zip squarefree [1..], fj<- factor g] where
+	f = polyClean ff	
+	squarefree = map poli $ polySquareFree $ fmap fromIntegral f
+	factor f = undefined where
+		b = max (abs $ snd $ polyTop f)(abs $ snd $ polyLowest f)
+		a = head [ i-1 | i<-[1..] , p^i > 2*b ]
+		p = head [ p |p <- primes, let (gcd,_) = polPEuclid p f (polyDiff f), deg gcd == 1]
+		
+
 
 -- Hensel-Lifting. g muß ein einfacher Teiler von f mod p sein
 henselLift p f g = let
-	(h,err)= polPDivMod p f g
+	(hh,err)= polPDivMod p f g
+	h = modp h
+	modp f = fmap (neg . flip mod p) f where neg x = if 2*x > p then x-p else x
 	(gcd,(ss,tt)) = polPEuclid p g h
 	gi = fst $ snd $ euclid (head $polyToList gcd) p
 	[s,t] = map (fmap (gi*)) [ss,tt]
