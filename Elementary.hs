@@ -44,3 +44,8 @@ chinese l = snd $ foldr ch2 (1,0) l where
 		r = x*b*n + y*a*n'
 		kgv = n*n' `div` gcd
 		in (kgv, mod r kgv)
+
+-- Square und Multiply Methode modulo was
+powerMod mod x n = if n==0 then 1 else if m==0 then res else mod $ x*res where
+	(d,m) = divMod n 2
+	res = powerMod mod (mod $ x*x) d 
