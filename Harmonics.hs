@@ -8,6 +8,8 @@ import Elementary
 import LinearAlgebra
 import MatrixAlgorithms
 import Polynomial
+import RationalRoot
+import PrimeFactors
 
 laplace p = laplaceN (-1) p
 
