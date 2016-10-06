@@ -45,6 +45,9 @@ decomp dim deg f = harmPr dim deg f : decomp dim (deg-2) ff where
 	rec j a f = if 2*j> n then 0 else 
 		infPolScale a f + r * rec (j+1) (a/4/(j+1)/(2-n-d/2+j)) (laplace f) 
 
+decompR dim deg f = zipWith (*) rads $ decomp dim deg f where
+	rads = 1 : map (* radSq dim) rads
+
 demon l = [ foldr lcm 1 $ map (denominator.snd) t | InfPol t <- x] where
 	x = decomp (length l) (sum l) $ x_ l
 
@@ -74,5 +77,17 @@ bilinears d n = [ polyClean$polyFromList$berkowitz [1..m] $rix $ reproducing d k
 	rix r = listArray ((1,1),(m,m)) [infPolConstCoeff$ integrate d $ x * ry | y<- mon, 
 			let ry = integrate d $ r*y, x<-mon]
 
+
+bilVector b d n = zipWith b x x where
+	x = decompR d n $ x_ [n]
+
+
+bil0 (InfPol a) (InfPol b) = sum [bi (alphList$partAdd p q) * x * y | (p,x) <- a, (q,y) <- b ] where
+	bi [] = 1
+	bi (t:r) = if odd t then 0 else fromIntegral (product [t-1,t-3..1]) * bi r
+
+bil1 (InfPol a) (InfPol b) = sum [bi (alphList p) * x * y | (p,x) <- a, (q,y) <- b, q==p ] where
+	bi [] = 1
+	bi (t:r) = fromIntegral (product [1..t]) * bi r
 
 
