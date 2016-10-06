@@ -66,6 +66,8 @@ seriesInPoly p (Elem c r) = Elem (cc + polyEval p c) cr where
 instance Num a => Composeable (Polynomial a)(PowerSeries a)(PowerSeries a) where
 	(°) = seriesInPoly
 
+polyArgScale a p = Polynomial { deg = deg p, ser = seriesArgScale a $ ser p}
+
 -- Setzt ein anderes Polynom ein
 polyComp p q = Polynomial {deg = deg p * deg q, ser = seriesInPoly p $ ser q} 
 instance Num a => Composeable (Polynomial a)(Polynomial a)(Polynomial a) where

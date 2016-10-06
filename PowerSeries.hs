@@ -54,6 +54,9 @@ seriesInvShift r = inv where
 	inv = Elem 1 invirr
 	invirr = fmap negate $ seriesMult r inv
 
+seriesArgScale a = sa 1 where
+	sa s (Elem x xr) = Elem (x*s) $ sa (s*a) xr
+
 -- Setzt das t-Fache einer Reihe ein
 seriesCompShift a r = co 1 a where
 	co rpower (Elem a ar) = fmap (a*) rpower + Elem 0 (co (rpower*r) ar)
