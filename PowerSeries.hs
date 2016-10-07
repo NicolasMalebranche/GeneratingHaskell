@@ -39,12 +39,9 @@ seriesToList (Elem a r) = a:seriesToList r
 seriesCoeff s n = if n<0 then 0 else c s n where
 	c (Elem a r) n = if n==0 then a else c r (n-1) 
 
-seriesMult (Elem afst arst) = let
-	f acc ale br = Elem (acc br) $ f newacc ar br where
-		Elem a ar = ale
-		newacc (Elem b rb) = a*b + acc rb
-	facc (Elem b rb) = afst*b
-	in f facc arst
+seriesMult f g = mul (const 0) f g where
+	mul m (Elem a f) g = Elem (n g) (mul n f g) where 
+		n (Elem b g) = a*b + m g
 
 seriesInv (Elem c r) = if c == 1 then seriesInvShift r else 
 	error "Constant coefficient not 1"
