@@ -29,10 +29,9 @@ expSequence :: Num a => PowerSeries a -> [a]
 expSequence = makeexp 1 1 where
 	makeexp i k (Elem a r) = (fromInteger k * a): makeexp (i+1) (i*k) r
 
-seriesZip op = let 
+seriesZip op = zz where 
 	zz (Elem a r) (Elem b k) = Elem (op a b) $ zz r k
-	in zz
-
+	
 seriesToList (Elem a r) = a:seriesToList r
 
 -- n-ter Koeffizient
@@ -48,8 +47,7 @@ seriesInv (Elem c r) = if c == 1 then seriesInvShift r else
 
 -- Liefert 1/(1+t*r)
 seriesInvShift r = inv where
-	inv = Elem 1 invirr
-	invirr = fmap negate $ seriesMult r inv
+	inv = Elem 1 $ fmap negate $ seriesMult r inv
 
 seriesArgScale a = sa 1 where
 	sa s (Elem x xr) = Elem (x*s) $ sa (s*a) xr
@@ -99,8 +97,8 @@ seriesCutOrder n = cb 0 where
 
 
 instance (Num a) => Num (PowerSeries a) where
-	(+) = seriesZip (+)
-	(-) = seriesZip (-)
+	Elem a f + Elem b g = Elem (a+b) (f+g)
+	Elem a f - Elem b g = Elem (a-b) (f-g)
 	negate = fmap negate
 	abs = fmap abs
 	signum = fmap signum
