@@ -62,6 +62,17 @@ integrate d (InfPol p) = infPol[ (PartAlpha (drop d a) , x*f a / vol)|  (PartAlp
 	gamma n = product [ n-1, n-2 .. 1]
 	vol = 2/ gamma (fromIntegral d/2)
 
+-- Orthogonalsystem von harmonischen Polynomen
+harmonics dim deg = gramSchmidt $ map (harmPr dim deg) basis where
+	basis = map (infPolMapIndex (0:)) (monomials (dim-1) deg)
+		++ map (infPolMapIndex (1:)) (monomials (dim-1) (deg-1))
+	b x y = infPolConstCoeff $ integrate dim $ x*y
+	gramSchmidt [] = []
+	gramSchmidt (w:r) = orth ++ [w - f orth] where 
+		orth = gramSchmidt r
+		f [] = 0
+		f (v:r) = infPolScale (b w v / b v v) v+ f r
+
 -- Skalarprodukt: x_1*x_{d+1} + ... + x_d*x_{2d}
 scalar d = sum [x_ $ replicate i 0 ++[1]++replicate (d-1) 0 ++[1]++replicate (d-i-1) 0 | i<- [0..d-1]]
 
@@ -89,5 +100,8 @@ bil0 (InfPol a) (InfPol b) = sum [bi (alphList$partAdd p q) * x * y | (p,x) <- a
 bil1 (InfPol a) (InfPol b) = sum [bi (alphList p) * x * y | (p,x) <- a, (q,y) <- b, q==p ] where
 	bi [] = 1
 	bi (t:r) = fromIntegral (product [1..t]) * bi r
+
+bil2 (InfPol a) (InfPol b) = sum [bi (alphList p) (alphList q) * x * y | (p,x) <- a, (q,y) <- b ] where
+	bi p q = fromIntegral$ sum $ zipWith (*) p q
 
 
