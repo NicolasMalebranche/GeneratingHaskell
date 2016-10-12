@@ -15,13 +15,16 @@ infPolConst y = InfPol [(partEmpty,y)]
 x_ a = InfPol [(PartAlpha a,1::Rational)]
 
 -- Liste der homogenen Monome vom Grad deg in dim Variablen
-monomials dim deg = [ x_ a | a<-find dim deg] where
+monomials dim deg = if dim < 0 then [] else [ x_ a | a<-find dim deg] where
 	find 0 0 = [[]]
 	find 0 _ = []
 	find dim deg = [ k:a | k<- [0..deg], a <- find (dim-1) (deg-k) ]
 
 -- Konstanter Koeffizient
 infPolConstCoeff (InfPol p) = sum [ x| (r,x) <- p, partNull r]
+
+-- Führt eine Operation auf den Multiindizes durch
+infPolMapIndex f (InfPol p) = InfPol [(PartAlpha (f a),b)| (PartAlpha a,b) <- p ]
 	
 
 instance (Num a,Eq a, Partition p,Ord p) => Num (InfinitePolynomial p a) where
