@@ -123,6 +123,12 @@ polySquareFree f = if f==0 then [0] else sf g (fst (polyDivMod f g)) where
 -- Setzt das negative Argument ein
 polyCompNegate p = Polynomial { deg = deg p, ser = seriesCompNegate $ ser p}
 
+-- Kartesische Regel. Gibt max. Anzahl positiver und negativer Nullstellen
+polyDescartes p = ( pos $ list p, pos $ list $ polyCompNegate p) where
+	pos (a:b:r) = if a/= b then 1 + pos (b:r) else pos (b:r)
+	pos _ = 0
+	list p = [a<0 | a<- polyToList p, a/=0 ]
+
 instance (Num a) => Num (Polynomial a) where
 	p + q = Polynomial {deg = max (deg p) (deg q), ser = ser p + ser q}
 	p * q = Polynomial {deg = deg p + deg q, ser = ser p * ser q}
