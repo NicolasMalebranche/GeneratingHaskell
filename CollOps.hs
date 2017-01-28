@@ -4,12 +4,13 @@ import SortBubble
 
 data Ops = T0 | T2 | T1 | B0 | B1 deriving (Eq,Ord,Show)
 
-compops T0 B0 = [B0,T0]
-compops T0 B1 = [B0,T1]
-compops T1 B0 = [B0,T2]
-compops T1 B1 = [B1,T0]
-compops T2 B0 = [B1,T1]
-compops T2 B1 = [B1,T2]
+
+compops B0 T0 = [T0,B0]
+compops B0 T1 = [T0,B1]
+compops B0 T2 = [T1,B0]
+compops B1 T0 = [T1,B1]
+compops B1 T1 = [T2,B0]
+compops B1 T2 = [T2,B1]
 compops a b  = [a,b]
 
 sortC =  sortBubble compops
