@@ -2,8 +2,16 @@ module CollOps where
 
 import SortBubble
 
-data Ops = T0 | T2 | T1 | B0 | B1 deriving (Eq,Ord,Show)
+data Ops = T0 | T2 | T1 | B0 | B1 deriving (Eq,Ord,Show,Enum)
 
+
+numeric = nu 0 where
+	nu n [] = n
+	nu n (T0:r) = nu (3*n) r
+	nu n (T1:r) = nu (3*n+1) r
+	nu n (T2:r) = nu (3*n+2) r
+	nu n (B0:r) = nu (2*n) r
+	nu n (B1:r) = nu (2*n+1) r
 
 compops B0 T0 = [T0,B0]
 compops B0 T1 = [T0,B1]
@@ -35,7 +43,9 @@ compress = f where
 	c (B n) (T2:b) = B n: c (T 2) b
 	c (B n) (B0:b) = c (B $ 2*n  ) b
 	c (B n) (B1:b) = c (B $ 2*n+1) b
-	
+
+
+
 inflate [] = []
 inflate (T 0:r) = T0 : inflate r
 inflate (T n:r) = dec n ++ inflate r where
