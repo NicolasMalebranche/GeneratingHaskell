@@ -14,4 +14,6 @@ printTable((a,b):r) = let sa = show a in
 		[putStrLn (replicate (length sa +3) ' ' ++ '\t':show x)|  x <- tail b] 
 			>> printTable r
 
+			
+printList l = foldl (>>) (return ()) $ map (putStrLn . show) l
 
