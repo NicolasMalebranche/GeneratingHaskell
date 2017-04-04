@@ -1,59 +1,52 @@
 module CollOps where
 
+import Data.MemoTrie
+import Data.List
+import Data.Ratio
+
 import SortBubble
+import Table
 
-data Ops = T0 | T2 | T1 | B0 | B1 deriving (Eq,Ord,Show,Enum)
+data Ops = T Integer | B Integer deriving (Eq,Ord,Show)
 
+baseB = 2
+baseT = baseB + 1
 
-numeric = nu 0 where
-	nu n [] = n
-	nu n (T0:r) = nu (3*n) r
-	nu n (T1:r) = nu (3*n+1) r
-	nu n (T2:r) = nu (3*n+2) r
-	nu n (B0:r) = nu (2*n) r
-	nu n (B1:r) = nu (2*n+1) r
+applyOps n [] = n
+applyOps n (T i:r) = applyOps (baseT*n + i) r
+applyOps n (B i:r) = applyOps (baseB*n + i) r
 
-compops B0 T0 = [T0,B0]
-compops B0 T1 = [T0,B1]
-compops B0 T2 = [T1,B0]
-compops B1 T0 = [T1,B1]
-compops B1 T1 = [T2,B0]
-compops B1 T2 = [T2,B1]
-compops a b  = [a,b]
+numeric = applyOps 0
 
-sortC =  sortBubble compops
+ruleB (B 0) = []
+ruleB (B i) = [T (i + baseT-baseB)]
 
-data OpNums = T Int Integer | B Int Integer deriving (Eq,Ord,Show)
+ruleT (T i) = if i<baseB then [B i] else ruleT (T d) ++ [B m] where
+	(d,m) = divMod i baseB
 
-compress = f where
-	f [] = []
-	f (T0:r) = c (T 1 0) r
-	f (T1:r) = c (T 1 1) r
-	f (T2:r) = c (T 1 2) r
-	f (B0:r) = c (B 1 0) r
-	f (B1:r) = c (B 1 1) r
-	c tb [] = [tb]
-	c (T p n) (T0:b) = c (T (p+1) (3*n))  b
-	c (T p n) (T1:b) = c (T (p+1) (3*n+1)) b
-	c (T p n) (T2:b) = c (T (p+1) (3*n+2)) b
-	c (T p n) (B0:b) = T p n: c (B 1 0) b
-	c (T p n) (B1:b) = T p n: c (B 1 1) b
-	c (B p n) (T0:b) = B p n: c (T 1 0) b
-	c (B p n) (T1:b) = B p n: c (T 1 1) b
-	c (B p n) (T2:b) = B p n: c (T 1 2) b
-	c (B p n) (B0:b) = c (B (p+1) (2*n)) b
-	c (B p n) (B1:b) = c (B (p+1) (2*n+1)) b
+compops (B i) (T j) = [T d, B m] where 
+	(d,m) = divMod (baseT * i + j) baseB
+compops a b = [a,b]
+
+sortC = sortBubble compops
 
 
-
-inflate [] = []
-inflate (T p n:r) = dec p n ++ inflate r where
-	t 0 = T0; t 1 = T1; t 2 = T2
-	dec 0 _ = [] 
-	dec p n = dec (p-1) d ++ [t m] where (d,m) = divMod n 3
-inflate (B p n:r) = dec p n ++ inflate r where
-	b 0 = B0; b 1 = B1
-	dec 0 _ = [] 
-	dec p n = dec (p-1) d ++ [b m] where (d,m) = divMod n 2
+endOp [] = [] 
+endOp(B i:r) = g (B i) (endOp r) where
+	g x [] = ruleB x
+	g x (t:r) = a: g b r where [a,b] = compops x t
 	
-	
+
+eoi = memo e where
+	e =  map f . endOp . map g 
+	f (T i) = head $ show i
+	g x = B $ read [x]
+
+bs 0 = [0]
+bs n = [ 10*x + i | x<-bs (n-1) , i <- [0..baseB-1] ]
+ts 0 = [0]
+ts n = [ 10*x + i | x<-ts (n-1) , i <- [0..baseB-1] ]
+
+shortestEnd x = search 0 where
+	search n = if f/=[] then last f else search (n+1) where 
+		f = filter(\y -> x == eoi y) (map show $bs n)
