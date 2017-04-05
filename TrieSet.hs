@@ -3,28 +3,23 @@ module TrieSet where
 import Prelude hiding (null,lookup,filter)
 import qualified Prelude as P
 import Data.MemoTrie
-import qualified Data.Set as Set
 import Cantor
 
 -- Mengen von möglicherweise unendlicher Mächtigkeit
-
+-- contains: ist ein Element in der Menge enthalten?
+-- elems: abzählbar viele Elemente der Menge in beliebiger Reihenfolge
 data TrieSet a = TrieSet {contains :: a -> Bool, elems :: [a]}
 
-fromList l = TrieSet f nodup where
-	f = memo (g l)
-	g [] i = False
-	g (a:r) i = (a==i) || seq (f a) (g r i)
-	nodup = n Set.empty l 
-	n _ [] = []
-	n s (a:r) = if Set.member a s then n s r else 
-		a: n (Set.insert a s) r
-	
 member = flip contains
 empty = TrieSet {contains = const False, elems = []}
 singleton a = TrieSet {contains = (==) a, elems = [a]}
 insert a s = TrieSet {contains = memo c, elems=e} where
 	c i = (a==i) || contains s i 
 	e = a : P.filter (/= a) (elems s)
+fromList l = foldr insert empty l
+delete a s = TrieSet {contains = memo c, elems=e} where
+	c i = (a/=i) && contains s i
+	e =  P.filter c (elems s)
 
 
 union a b = TrieSet {contains = memo c , elems = e} where
