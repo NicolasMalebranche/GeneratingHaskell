@@ -15,8 +15,9 @@ import Numeric
 data Z_Bin = Z64 Word64 Z_Bin
 
 instance Show Z_Bin where
-	show (Z64 u (Z64 v r)) = if v==0 then ".." ++ showHex u []
-		else ".." ++ showHex (toInteger v * 2^64 + toInteger u) []
+	show (Z64 u (Z64 v (Z64 w r))) = ".." ++ (if w==0 then "" else showHex w [] )++
+		if v==0 && w==0 then showHex u []
+		else showHex (toInteger v * 2^64 + toInteger u) []
 
 scalarAdd :: Word64 -> Z_Bin -> Z_Bin
 scalarAdd a (Z64 u s) = let
@@ -38,6 +39,12 @@ scalarMult sc = sma where
 	  k12 = k1 + k2 
 	  k = b*y + if k12 < k1 .|. k2 then sh k12 + 2^32 else sh k12
 	  in Z64 (sc*u) $ scalarAdd k $ sma s
+	  
+-- liefert das Inverse modulo 2^64 für ungerade Eingaben
+recipWord64 :: Word64 -> Word64
+recipWord64 a = g 6 where
+	g 0 = 1
+	g i = let h = g (i-1) in (2-a*h)*h
 		
 instance Num Z_Bin where
 	fromInteger i = Z64 (fromInteger i) $ fromInteger $ div i (2^64)
