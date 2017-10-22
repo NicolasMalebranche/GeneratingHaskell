@@ -195,3 +195,10 @@ toInt q = if n ==1 then z else error "not integral" where
 
 
 
+write2222224 n = [ cupIntList (a: b) | a<- h4, b <- hSym] where
+-- writeFile ("GAP_Code/GAP_n="++show n++"_Sym2222224.txt")  m where
+	--m = "a:= [\n" ++ concat (intersperse",\n"$ map (show.col) hSym) ++"\n];;\n"
+	h2 = hilbBase n 2;  h4 = hilbBase n 4
+	hSym = [[a2,b2,c2,d2,e2,f2]|a2<-h2,b2<-h2,a2<=b2,c2<-h2,b2<=c2,d2<-h2,c2<=d2,e2<-h2,d2<=e2,f2<-h2,e2<=f2]
+	--col = dense (hilbBase n 6). cupIntList
+	
