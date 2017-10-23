@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, FlexibleInstances #-}
 
 -- Modul für 2-adische Zahlen
 module PAdicBin where
@@ -6,7 +5,6 @@ module PAdicBin where
 import System.IO.Unsafe
 import Data.IORef
 import Data.Ratio
-import ContinuedFraction
 import Data.Bits
 import Data.Word
 import Numeric
@@ -27,24 +25,35 @@ scalarAdd a (Z64 u s) = let
 -- "Skalarmultiplikation"
 scalarMult :: Word64 -> Z_Bin -> Z_Bin
 scalarMult sc = sma where
-	-- Zerlegung in Blöcke der Länge 32
-	a = sc .&. (2^32-1)
-	b = sh sc
+	ma = mult64Carry sc
+	sma (Z64 u s) = Z64 (sc*u) $ scalarAdd (ma u) $ sma s
+
+-- mult64Carry a b == c <=> a`mal`b == a*b + 2^64 c
+-- 0 <= c < 2^64 - 1
+mult64Carry :: Word64 -> Word64 -> Word64	  
+mult64Carry a = ma where 
 	sh = flip shiftR 32
-	sma (Z64 u s) = let 
-	  x = u .&. (2^32-1)
-	  y = sh u
-	  k1 = b*x + sh (a*x)
-	  k2 = a*y
-	  k12 = k1 + k2 
-	  k = b*y + if k12 < k1 .|. k2 then sh k12 + 2^32 else sh k12
-	  in Z64 (sc*u) $ scalarAdd k $ sma s
-	  
+	a1 = (2^32-1) .&. a
+	a2 = sh a 
+	ma b = let
+		b1 = (2^32-1) .&. b
+		b2 = sh b 
+		k1 = a2*b1 + sh (a1*b1) 
+		k2 = a1*b2
+		k12 = k1 + k2
+		in (if k12 < k1 .|. k2 then sh k12 + 2^32 else sh k12) + a2*b2
+	
 -- liefert das Inverse modulo 2^64 für ungerade Eingaben
 recipWord64 :: Word64 -> Word64
-recipWord64 a = g 6 where
-	g 0 = 1
-	g i = let h = g (i-1) in (2-a*h)*h
+recipWord64 a = g 7 1 where
+	g 0 h = h
+	g i h = g (i-1) $ (2-a*h)*h
+
+-- multiplikatives Inverses für ungerade Eingaben
+recipZ64 (Z64 a b) = aa where
+	a_ = recipWord64 a
+	c  = mult64Carry a a_
+	aa = Z64 a_ $ (scalarAdd (-c) $ scalarMult (-a_) b) * aa
 		
 instance Num Z_Bin where
 	fromInteger i = Z64 (fromInteger i) $ fromInteger $ div i (2^64)
