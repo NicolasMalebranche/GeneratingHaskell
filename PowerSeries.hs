@@ -47,7 +47,7 @@ seriesInv (Elem c r) = if c == 1 then seriesInvShift r else
 
 -- Liefert 1/(1+t*r)
 seriesInvShift r = inv where
-	inv = Elem 1 $ fmap negate $ seriesMult r inv
+	inv = Elem 1 $ fmap negate $ seriesMult inv r
 
 seriesArgScale a = sa 1 where
 	sa s (Elem x xr) = Elem (x*s) $ sa (s*a) xr
@@ -106,10 +106,11 @@ instance (Num a) => Num (PowerSeries a) where
 	(*) = seriesMult
 
 instance (Fractional a) => Fractional (PowerSeries a) where
-	recip (Elem c r) = let
+	recip (Elem c r) = inv where
 		inv = Elem (recip c) invirr
-		invirr = fmap negate $ seriesMult (fmap (/c) r) inv
-		in inv
+		invirr = fmap negate $ seriesMult inv (fmap (/c) r)
+	a / (Elem c r) = inv where
+		inv = fmap (/c) $ a - Elem 0 (seriesMult inv r)
 	fromRational a = Elem (fromRational a) (nullSeries ())
 
 instance (Num a, Eq a) => Composeable (PowerSeries a)(PowerSeries a)(PowerSeries a) where
