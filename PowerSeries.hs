@@ -18,6 +18,8 @@ t = Elem 0 1
 
 nullSeries _ = nll where
 	nll = Elem 0 nll
+	
+seriesConst a = Elem a (nullSeries ())
 
 -- Von Folge auf erzeugende Funktion
 seriesGenerating (a:r) = Elem a $ seriesGenerating r
@@ -102,7 +104,7 @@ instance (Num a) => Num (PowerSeries a) where
 	negate = fmap negate
 	abs = fmap abs
 	signum = fmap signum
-	fromInteger i = Elem (fromInteger i) (nullSeries ())
+	fromInteger = seriesConst . fromInteger 
 	(*) = seriesMult
 
 instance (Fractional a) => Fractional (PowerSeries a) where
@@ -111,7 +113,7 @@ instance (Fractional a) => Fractional (PowerSeries a) where
 		invirr = fmap negate $ seriesMult inv (fmap (/c) r)
 	a / (Elem c r) = inv where
 		inv = fmap (/c) $ a - Elem 0 (seriesMult inv r)
-	fromRational a = Elem (fromRational a) (nullSeries ())
+	fromRational = seriesConst . fromRational
 
 instance (Num a, Eq a) => Composeable (PowerSeries a)(PowerSeries a)(PowerSeries a) where
 	(°) = seriesComp

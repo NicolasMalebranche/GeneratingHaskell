@@ -192,6 +192,11 @@ rtUnityZ_p a' = Z_p a w where
 		fromIntegral (choose (p()-1) (toInteger k)) * wp
 	w = p1i * (c - Z_p 0 (w*wa*psum 2 1))
 
+-- Teichmüller Darstellung
+omega k = case (mod k (p())) of 
+	0 -> 0
+	r -> rtUnityZ_p r
+
 -- Wendet Newtonverfahren auf einen Startwert a an. f(a) muß Ordnung mindestens 1 haben.
 newtonZ_p f f' a = Z_p a' $ t 1 a where
 	Z_p a' _ = a
